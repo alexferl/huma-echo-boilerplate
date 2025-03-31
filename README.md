@@ -17,7 +17,7 @@ make help
 ```
 
 Config:
-```shell
+```
       --app-name string                              Application name (default "app")
       --bind-addr string                             Server binding address (default "127.0.0.1:1323")
       --body-limit string                            Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
