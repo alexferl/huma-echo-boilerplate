@@ -357,7 +357,7 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&c.GracefulTimeout, GracefulTimeout, c.GracefulTimeout, "timeout")
 	fs.BoolVar(&c.LogRequests, LogRequests, c.LogRequests, "Enables or disables logging of incoming HTTP requests")
 
-	fs.StringVar(&c.BodyLimit.Limit, BodyLimitLimit, c.BodyLimit.Limit, "Sets the maximum allowed size of the request body. Use values like \"100K\", \"10M\" or \"1G\"")
+	fs.StringVar(&c.BodyLimit.Limit, BodyLimitLimit, c.BodyLimit.Limit, "Sets the maximum allowed size of the request body, use values like \"100K\", \"10M\" or \"1G\"")
 
 	fs.BoolVar(&c.CORS.Enabled, CORSEnabled, c.CORS.Enabled, "Enable CORS middleware")
 	fs.StringSliceVar(&c.CORS.AllowOrigins, CORSAllowOrigins, c.CORS.AllowOrigins, "Allowed origins for CORS requests")
