@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
 	"github.com/alexferl/huma-echo-boilerplate/logger"
 )
 
@@ -188,7 +189,10 @@ func New() *Config {
 			MinLength: middleware.DefaultGzipConfig.MinLength,
 		},
 		Healthcheck: Healthcheck{
-			Enabled: true,
+			Enabled:           true,
+			LivenessEndpoint:  healthcheck.DefaultConfig.LivenessEndpoint,
+			ReadinessEndpoint: healthcheck.DefaultConfig.ReadinessEndpoint,
+			StartupEndpoint:   healthcheck.DefaultConfig.StartupEndpoint,
 		},
 		Prometheus: Prometheus{
 			Enabled: false,
@@ -581,8 +585,21 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				// Split the usage into lines
 				usageLines := strings.Split(flag.Usage, "\n")
 
+				typeName := flag.Value.Type()
+				switch typeName {
+				case "stringSlice":
+					typeName = "strings"
+				case "intSlice":
+					typeName = "ints"
+				}
+
 				// Print the first line
-				_, err := fmt.Fprintf(w, "  %s--%s\t%s%s\n", shorthand, flag.Name, usageLines[0], defaultValue)
+				_, err := fmt.Fprintf(w, "  %s--%s %s\t%s%s\n",
+					shorthand,
+					flag.Name,
+					typeName,
+					usageLines[0],
+					defaultValue)
 				if err != nil {
 					log.Err(err).Msg("failed writing to writer")
 					return
