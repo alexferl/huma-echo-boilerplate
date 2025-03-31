@@ -12,7 +12,7 @@ const (
 	csrfSameSiteDefaultMode = "default"
 	csrfSameSiteLaxMode     = "lax"
 	csrfSameSiteStrictMode  = "strict"
-	csrfSameSiteNoneMode    = "node"
+	csrfSameSiteNoneMode    = "none"
 )
 
 const (

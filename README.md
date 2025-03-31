@@ -55,7 +55,7 @@ CSRF middleware configuration options:
   --csrf-cookie-secure bool        Set Secure flag on CSRF cookie (default false)
   --csrf-cookie-http-only bool     Set HttpOnly flag on CSRF cookie (default false)
   --csrf-cookie-same-site string   SameSite attribute for CSRF cookie (default default)
-                                   Values: default, lax, strict, node
+                                   Values: default, lax, strict, none
 
 GZIP middleware configuration options:
   --gzip-enabled bool     Enable GZIP compression (default false)
