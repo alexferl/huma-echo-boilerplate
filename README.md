@@ -1,4 +1,4 @@
-# huma-echo-boilerplate
+# huma-echo-boilerplate [![Go Report Card](https://goreportcard.com/badge/github.com/alexferl/echo-boilerplate)](https://goreportcard.com/report/github.com/alexferl/echo-boilerplate)
 A [Huma](https://huma.rocks/) + [Echo](https://echo.labstack.com/) Go boilerplate.
 
 ## Requirements
