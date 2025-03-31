@@ -1,17 +1,12 @@
-# go-boilerplate
-A minimalistic Go boilerplate.
-
-Includes:
-- [gofumpt](https://pkg.go.dev/mvdan.cc/gofumpt)
-- [golangci-lint](https://golangci-lint.run)
-- [pre-commit](https://pre-commit.com)
+# huma-echo-boilerplate
+A [Huma](https://huma.rocks/) + [Echo](https://echo.labstack.com/) Go boilerplate.
 
 ## Requirements
 - Go 1.23+
 
 ## Using
 ```shell
-git clone https://github.com/alexferl/go-boilerplate.git myapp
+git clone https://github.com/alexferl/huma-echo-boilerplate.git myapp
 cd myapp
 make dev
 ```
