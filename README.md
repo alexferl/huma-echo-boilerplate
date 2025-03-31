@@ -17,10 +17,10 @@ make help
 ```
 
 Config:
-```go
+```shell
       --app-name string                              Application name (default "app")
       --bind-addr string                             Server binding address (default "127.0.0.1:1323")
-      --body-limit string                            Sets the maximum allowed size of the request body. Use values like "100K", "10M" or "1G"
+      --body-limit string                            Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
       --config-paths strings                         Specifies directories where configuration files will be searched for, in order of preference (default [./configs,/configs])
       --config-prefix string                         Sets the prefix for configuration files to be loaded, e.g., "config" would match "config.{env_name}.toml" (default "config")
       --config-type string                           Defines the format of configuration files to be loaded
