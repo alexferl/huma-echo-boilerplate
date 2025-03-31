@@ -1,5 +1,5 @@
 # huma-echo-boilerplate
-A [Huma] (https://huma.rocks/) + [Echo](https://echo.labstack.com/) Go boilerplate.
+A [Huma](https://huma.rocks/) + [Echo](https://echo.labstack.com/) Go boilerplate.
 
 ## Requirements
 - Go 1.23+
