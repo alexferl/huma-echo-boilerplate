@@ -39,6 +39,12 @@ func New() (*Service, error) {
 	}
 
 	var middlewares []echo.MiddlewareFunc
+	if viper.GetString(config.BodyLimitLimit) != "" {
+		middlewares = append(middlewares, middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
+			Limit: viper.GetString(config.BodyLimitLimit),
+		}))
+	}
+
 	if viper.GetBool(config.CORSEnabled) {
 		middlewares = append(middlewares, middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins:     viper.GetStringSlice(config.CORSAllowOrigins),

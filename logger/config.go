@@ -26,8 +26,8 @@ const (
 	LogLevel  = "log-level"
 )
 
-// BindFlags adds all the flags from the command line.
-func (c *Config) BindFlags(fs *pflag.FlagSet) {
+func (c *Config) FlagSet() *pflag.FlagSet {
+	fs := pflag.NewFlagSet("Logger", pflag.ExitOnError)
 	fs.StringVar(&c.LogLevel, LogLevel, c.LogLevel,
 		fmt.Sprintf("Log granularity\nValues: %s", strings.Join(Levels, ", ")),
 	)
@@ -37,4 +37,6 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.LogWriter, LogWriter, c.LogWriter,
 		fmt.Sprintf("Log format\nValues: %s", strings.Join(Writers, ", ")),
 	)
+
+	return fs
 }
