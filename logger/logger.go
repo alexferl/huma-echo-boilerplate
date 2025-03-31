@@ -24,11 +24,11 @@ const (
 var Levels = []string{PanicLevel, FatalLevel, ErrorLevel, WarnLevel, InfoLevel, Disabled, TraceLevel, Disabled}
 
 const (
-	WriterText = "text"
-	WriterJSON = "json"
+	FormatText = "text"
+	FormatJSON = "json"
 )
 
-var Writers = []string{WriterText, WriterJSON}
+var Formats = []string{FormatText, FormatJSON}
 
 const (
 	OutputStdOut = "stdout"
@@ -52,12 +52,12 @@ func New(config *Config) error {
 		config.LogOutput = DefaultConfig.LogOutput
 	}
 
-	if config.LogWriter == "" {
-		config.LogWriter = DefaultConfig.LogWriter
+	if config.LogFormat == "" {
+		config.LogFormat = DefaultConfig.LogFormat
 	}
 
 	logOutput := strings.ToLower(config.LogOutput)
-	logWriter := strings.ToLower(config.LogWriter)
+	logFormat := strings.ToLower(config.LogFormat)
 	logLevel := strings.ToUpper(config.LogLevel)
 
 	var f *os.File
@@ -67,20 +67,20 @@ func New(config *Config) error {
 	case OutputStdErr:
 		f = os.Stderr
 	default:
-		return fmt.Errorf("unknown log-output '%s'", logOutput)
+		return fmt.Errorf("unknown %s '%s'", LogOutput, logOutput)
 	}
 
 	logger := zerolog.New(f)
 
-	switch logWriter {
-	case WriterText:
+	switch logFormat {
+	case FormatText:
 		logger = log.Output(zerolog.ConsoleWriter{
 			Out: f, TimeFormat: time.RFC3339Nano,
 		})
-	case WriterJSON:
+	case FormatJSON:
 		break
 	default:
-		return fmt.Errorf("unknown log-writer '%s'", logWriter)
+		return fmt.Errorf("unknown %s '%s'", LogFormat, logFormat)
 	}
 
 	log.Logger = logger.With().Timestamp().Caller().Logger()
@@ -103,7 +103,7 @@ func New(config *Config) error {
 	case Disabled:
 		zerolog.SetGlobalLevel(zerolog.Disabled)
 	default:
-		return fmt.Errorf("unknown log-level '%s'", logLevel)
+		return fmt.Errorf("unknown %s '%s'", LogLevel, logLevel)
 	}
 
 	return nil

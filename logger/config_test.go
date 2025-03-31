@@ -14,8 +14,8 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Expected default LogOutput to be %s, got %s", OutputStdOut, DefaultConfig.LogOutput)
 	}
 
-	if DefaultConfig.LogWriter != WriterText {
-		t.Errorf("Expected default LogWriter to be %s, got %s", WriterText, DefaultConfig.LogWriter)
+	if DefaultConfig.LogFormat != FormatText {
+		t.Errorf("Expected default LogFormat to be %s, got %s", FormatText, DefaultConfig.LogFormat)
 	}
 }
 
@@ -36,7 +36,7 @@ func TestConfig_FlagSet(t *testing.T) {
 			config: &Config{
 				LogLevel:  "debug",
 				LogOutput: "stderr",
-				LogWriter: "json",
+				LogFormat: "json",
 			},
 			expectedName: "Logger",
 			flagChecks: []struct {
@@ -58,9 +58,9 @@ func TestConfig_FlagSet(t *testing.T) {
 					expectedDesc:    "Output destination",
 				},
 				{
-					flagName:        LogWriter,
+					flagName:        LogFormat,
 					expectedValue:   "json",
-					expectedContent: strings.Join(Writers, ", "),
+					expectedContent: strings.Join(Formats, ", "),
 					expectedDesc:    "Log format",
 				},
 			},
@@ -88,9 +88,9 @@ func TestConfig_FlagSet(t *testing.T) {
 					expectedDesc:    "Output destination",
 				},
 				{
-					flagName:        LogWriter,
-					expectedValue:   WriterText,
-					expectedContent: strings.Join(Writers, ", "),
+					flagName:        LogFormat,
+					expectedValue:   FormatText,
+					expectedContent: strings.Join(Formats, ", "),
 					expectedDesc:    "Log format",
 				},
 			},

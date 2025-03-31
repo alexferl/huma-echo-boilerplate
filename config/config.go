@@ -31,9 +31,9 @@ type Config struct {
 
 	Logger      *logger.Config
 	BodyLimit   BodyLimit
+	Compress    Compress
 	CORS        CORS
 	CSRF        CSRF
-	GZIP        GZIP
 	Healthcheck Healthcheck
 	Prometheus  Prometheus
 	RateLimiter RateLimiter
@@ -47,6 +47,12 @@ type Config struct {
 
 type BodyLimit struct {
 	Limit string
+}
+
+type Compress struct {
+	Enabled   bool
+	Level     int
+	MinLength int
 }
 
 type CORS struct {
@@ -71,12 +77,6 @@ type CSRF struct {
 	CookieSecure   bool
 	CookieHTTPOnly bool
 	CookieSameSite CSRFSameSiteMode
-}
-
-type GZIP struct {
-	Enabled   bool
-	Level     int
-	MinLength int
 }
 
 type Healthcheck struct {
@@ -162,6 +162,11 @@ func New() *Config {
 		BodyLimit: BodyLimit{
 			Limit: middleware.DefaultBodyLimitConfig.Limit,
 		},
+		Compress: Compress{
+			Enabled:   true,
+			Level:     6,
+			MinLength: 1400,
+		},
 		CORS: CORS{
 			Enabled:          false,
 			AllowOrigins:     middleware.DefaultCORSConfig.AllowOrigins,
@@ -183,13 +188,8 @@ func New() *Config {
 			CookieHTTPOnly: middleware.DefaultCSRFConfig.CookieHTTPOnly,
 			CookieSameSite: CSRFSameSiteMode(middleware.DefaultCSRFConfig.CookieSameSite),
 		},
-		GZIP: GZIP{
-			Enabled:   false,
-			Level:     middleware.DefaultGzipConfig.Level,
-			MinLength: middleware.DefaultGzipConfig.MinLength,
-		},
 		Healthcheck: Healthcheck{
-			Enabled:           true,
+			Enabled:           false,
 			LivenessEndpoint:  healthcheck.DefaultConfig.LivenessEndpoint,
 			ReadinessEndpoint: healthcheck.DefaultConfig.ReadinessEndpoint,
 			StartupEndpoint:   healthcheck.DefaultConfig.StartupEndpoint,
@@ -256,7 +256,7 @@ func New() *Config {
 			IgnoreBase: middleware.DefaultStaticConfig.IgnoreBase,
 		},
 		Timeout: Timeout{
-			Enabled:      true,
+			Enabled:      false,
 			ErrorMessage: middleware.DefaultTimeoutConfig.ErrorMessage,
 			Timeout:      middleware.DefaultTimeoutConfig.Timeout,
 		},
@@ -274,6 +274,10 @@ const (
 	LogRequests     = "log-requests"
 
 	BodyLimitLimit = "body-limit"
+
+	CompressEnabled   = "compress-enabled"
+	CompressLevel     = "compress-level"
+	CompressMinLength = "compress-min-length"
 
 	CORSEnabled          = "cors-enabled"
 	CORSAllowOrigins     = "cors-allow-origins"
@@ -294,10 +298,6 @@ const (
 	CSRFCookieSecure   = "csrf-cookie-secure"
 	CSRFCookieHTTPOnly = "csrf-cookie-http-only"
 	CSRFCookieSameSite = "csrf-cookie-same-site"
-
-	GZIPEnabled   = "gzip-enabled"
-	GZIPLevel     = "gzip-level"
-	GZIPMinLength = "gzip-min-length"
 
 	HealthcheckEnabled           = "healthcheck-enabled"
 	HealthcheckLivenessEndpoint  = "healthcheck-liveness-endpoint"
@@ -389,6 +389,16 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			}(),
 		},
 		{
+			Desc: "Compress middleware configuration options",
+			Flags: func() *pflag.FlagSet {
+				groupFs := pflag.NewFlagSet("Compress", pflag.ExitOnError)
+				groupFs.BoolVar(&c.Compress.Enabled, CompressEnabled, c.Compress.Enabled, "Enable compression")
+				groupFs.IntVar(&c.Compress.Level, CompressLevel, c.Compress.Level, "Compression level")
+				groupFs.IntVar(&c.Compress.MinLength, CompressMinLength, c.Compress.MinLength, "Minimum response size in bytes before compression is applied")
+				return groupFs
+			}(),
+		},
+		{
 			Desc: "CORS middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("CORS", pflag.ExitOnError)
@@ -417,16 +427,6 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.BoolVar(&c.CSRF.CookieSecure, CSRFCookieSecure, c.CSRF.CookieSecure, "Set Secure flag on CSRF cookie")
 				groupFs.BoolVar(&c.CSRF.CookieHTTPOnly, CSRFCookieHTTPOnly, c.CSRF.CookieHTTPOnly, "Set HttpOnly flag on CSRF cookie")
 				groupFs.Var(&c.CSRF.CookieSameSite, CSRFCookieSameSite, fmt.Sprintf("SameSite attribute for CSRF cookie\nValues: %s", strings.Join(csrfSameSiteModes, ", ")))
-				return groupFs
-			}(),
-		},
-		{
-			Desc: "GZIP middleware configuration options",
-			Flags: func() *pflag.FlagSet {
-				groupFs := pflag.NewFlagSet("GZIP", pflag.ExitOnError)
-				groupFs.BoolVar(&c.GZIP.Enabled, GZIPEnabled, c.GZIP.Enabled, "Enable GZIP compression")
-				groupFs.IntVar(&c.GZIP.Level, GZIPLevel, c.GZIP.Level, "Compression level")
-				groupFs.IntVar(&c.GZIP.MinLength, GZIPMinLength, c.GZIP.MinLength, "Minimum response size in bytes before compression is applied")
 				return groupFs
 			}(),
 		},
@@ -691,7 +691,7 @@ func (c *Config) BindFlags() error {
 	err = logger.New(&logger.Config{
 		LogLevel:  viper.GetString(logger.LogLevel),
 		LogOutput: viper.GetString(logger.LogOutput),
-		LogWriter: viper.GetString(logger.LogWriter),
+		LogFormat: viper.GetString(logger.LogFormat),
 	})
 	if err != nil {
 		return fmt.Errorf("failed creating logger: %v", err)

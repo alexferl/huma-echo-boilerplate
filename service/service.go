@@ -71,10 +71,10 @@ func New() (*Service, error) {
 		}))
 	}
 
-	if viper.GetBool(config.GZIPEnabled) {
+	if viper.GetBool(config.CompressEnabled) {
 		middlewares = append(middlewares, middleware.GzipWithConfig(middleware.GzipConfig{
-			Level:     viper.GetInt(config.GZIPLevel),
-			MinLength: viper.GetInt(config.GZIPMinLength),
+			Level:     viper.GetInt(config.CompressLevel),
+			MinLength: viper.GetInt(config.CompressMinLength),
 		}))
 	}
 

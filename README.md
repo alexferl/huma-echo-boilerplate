@@ -37,6 +37,11 @@ Server configuration options:
 Body limit middleware configuration options:
   --body-limit string   Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
 
+Compress middleware configuration options:
+  --compress-enabled bool     Enable compression (default true)
+  --compress-level int        Compression level (default 6)
+  --compress-min-length int   Minimum response size in bytes before compression is applied (default 1400)
+
 CORS middleware configuration options:
   --cors-enabled bool             Enable CORS middleware (default false)
   --cors-allow-origins strings    Allowed origins for CORS requests (default [*])
@@ -60,13 +65,8 @@ CSRF middleware configuration options:
   --csrf-cookie-same-site string   SameSite attribute for CSRF cookie (default default)
                                    Values: default, lax, strict, none
 
-GZIP middleware configuration options:
-  --gzip-enabled bool     Enable GZIP compression (default false)
-  --gzip-level int        Compression level (default -1)
-  --gzip-min-length int   Minimum response size in bytes before compression is applied (default 0)
-
 Healthcheck endpoints configuration options:
-  --healthcheck-enabled bool                Enable health check endpoints (default true)
+  --healthcheck-enabled bool                Enable health check endpoints (default false)
   --healthcheck-liveness-endpoint string    Path for the liveness health check endpoint that indicates if the application is running (default /livez)
   --healthcheck-readiness-endpoint string   Path for the readiness health check endpoint that indicates if the application is ready to receive traffic (default /readyz)
   --healthcheck-startup-endpoint string     Path for the startup health check endpoint that indicates if the application has completed its initialization (default /startupz)
@@ -74,10 +74,10 @@ Healthcheck endpoints configuration options:
 Logging configuration options:
   --log-level string    Log granularity (default INFO)
                         Values: PANIC, FATAL, ERROR, WARN, INFO, DISABLED, TRACE, DISABLED
+  --log-format string   Log format (default text)
+                        Values: text, json
   --log-output string   Output destination (default stdout)
                         Values: stdout, stderr
-  --log-writer string   Log format (default text)
-                        Values: text, json
 
 Prometheus configuration options:
   --prometheus-enabled bool   Enables Prometheus metrics collection and exposure for application monitoring (default false)
@@ -134,7 +134,7 @@ Static file serving configuration options:
   --static-ignore-base bool   Ignores the base path when serving static files, useful when your app is mounted under a sub-path (default false)
 
 Timeout middleware configuration options:
-  --timeout-enabled bool           Enable request timeout middleware (default true)
+  --timeout-enabled bool           Enable request timeout middleware (default false)
   --timeout-error-message string   Custom error message when request times out
   --timeout-time duration          Maximum duration allowed for request processing (default 0s)
 ```
