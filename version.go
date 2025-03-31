@@ -1,3 +1,3 @@
-package huma_fiber_boilerplate
+package huma_echo_boilerplate
 
 const Version = "0.0.0"

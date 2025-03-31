@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	huma_fiber_boilerplate "github.com/alexferl/huma-echo-boilerplate"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
 
+	humafiberboilerplate "github.com/alexferl/huma-echo-boilerplate"
 	"github.com/alexferl/huma-echo-boilerplate/config"
 	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
 )
@@ -235,7 +235,7 @@ func New() (*Service, error) {
 
 	e.Use(middlewares...)
 
-	humaCfg := huma.DefaultConfig(viper.GetString(config.AppName), huma_fiber_boilerplate.Version)
+	humaCfg := huma.DefaultConfig(viper.GetString(config.AppName), humafiberboilerplate.Version)
 	humaCfg.CreateHooks = nil
 	api := humaecho.New(e, humaCfg)
 
