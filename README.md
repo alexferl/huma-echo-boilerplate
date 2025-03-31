@@ -16,7 +16,10 @@ See which other commands are available with:
 make help
 ```
 
-## Config:
+## Config
+
+These can be passed as CLI arguments, environment variables (`--app-name` -> `APP_NAME`) or in config files.
+
 ```
 Usage: app [flags]
 
