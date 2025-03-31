@@ -20,6 +20,7 @@
 .gitignore
 .golangci.yml
 .pre-commit-config.yaml
+codecov.yml
 Makefile
 
 # binary
