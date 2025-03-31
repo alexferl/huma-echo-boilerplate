@@ -16,7 +16,7 @@ See which other commands are available with:
 make help
 ```
 
-Config:
+## Config:
 ```
 Usage: app [flags]
 
