@@ -354,7 +354,7 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.ConfigType, ConfigType, c.ConfigType, "Defines the format of configuration files to be loaded\nValues: json, toml, or yaml")
 	fs.StringSliceVar(&c.ConfigPaths, ConfigPaths, c.ConfigPaths, "Specifies directories where configuration files will be searched for, in order of preference")
 	fs.StringVar(&c.BindAddr, BindAddr, c.BindAddr, "Server binding address")
-	fs.DurationVar(&c.GracefulTimeout, GracefulTimeout, c.GracefulTimeout, "timeout")
+	fs.DurationVar(&c.GracefulTimeout, GracefulTimeout, c.GracefulTimeout, "Sets the maximum time to wait for in-flight requests to complete before shutting down the server")
 	fs.BoolVar(&c.LogRequests, LogRequests, c.LogRequests, "Enables or disables logging of incoming HTTP requests")
 
 	fs.StringVar(&c.BodyLimit.Limit, BodyLimitLimit, c.BodyLimit.Limit, "Sets the maximum allowed size of the request body, use values like \"100K\", \"10M\" or \"1G\"")
