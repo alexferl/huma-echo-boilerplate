@@ -112,9 +112,9 @@ Security headers configuration options:
   --secure-permissions-policy string                           Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing. (default accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=())
   --secure-referrer-policy string                              Sets the Referrer-Policy header to control how much referrer information is included with requests (default no-referrer)
   --secure-server string                                       Sets a custom value for the HTTP Server header in responses.
-  --secure-strict-transport-security-max-age int               Sets the max age in seconds for the Strict-Transport-Security header (default 0)
-  --secure-strict-transport-security-exclude-subdomains bool   Excludes subdomains from the Strict-Transport-Security policy, limiting it to the main domain only (default false)
-  --secure-strict-transport-security-preload-enabled bool      Adds the preload directive to the Strict-Transport-Security header, allowing the site to be included in browser preload lists (default false)
+  --secure-strict-transport-security-max-age int               Sets the max age in seconds for the HTTP Strict-Transport-Security (HSTS) header (default 0)
+  --secure-strict-transport-security-exclude-subdomains bool   Excludes subdomains from the HSTS policy, limiting it to the main domain only (default false)
+  --secure-strict-transport-security-preload-enabled bool      Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists (default false)
   --secure-x-content-type-options string                       Sets the X-Content-Type-Options header to prevent MIME type sniffing (default nosniff)
   --secure-x-frame-options string                              Sets the X-Frame-Options header to prevent clickjacking attacks (default DENY)
 

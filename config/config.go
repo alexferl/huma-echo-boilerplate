@@ -519,9 +519,9 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.StringVar(&c.Secure.PermissionsPolicy, SecurePermissionsPolicy, c.Secure.PermissionsPolicy, "Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing.")
 				groupFs.StringVar(&c.Secure.ReferrerPolicy, SecureReferrerPolicy, c.Secure.ReferrerPolicy, "Sets the Referrer-Policy header to control how much referrer information is included with requests")
 				groupFs.StringVar(&c.Secure.Server, SecureServer, c.Secure.Server, "Sets a custom value for the HTTP Server header in responses.")
-				groupFs.IntVar(&c.Secure.StrictTransportSecurity.MaxAge, SecureStrictTransportSecurityMaxAge, c.Secure.StrictTransportSecurity.MaxAge, "Sets the max age in seconds for the Strict-Transport-Security header")
-				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.ExcludeSubdomains, SecureStrictTransportSecurityExcludeSubdomains, c.Secure.StrictTransportSecurity.ExcludeSubdomains, "Excludes subdomains from the Strict-Transport-Security policy, limiting it to the main domain only")
-				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.PreloadEnabled, SecureStrictTransportSecurityPreloadEnabled, c.Secure.StrictTransportSecurity.PreloadEnabled, "Adds the preload directive to the Strict-Transport-Security header, allowing the site to be included in browser preload lists")
+				groupFs.IntVar(&c.Secure.StrictTransportSecurity.MaxAge, SecureStrictTransportSecurityMaxAge, c.Secure.StrictTransportSecurity.MaxAge, "Sets the max age in seconds for the HTTP Strict-Transport-Security (HSTS) header")
+				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.ExcludeSubdomains, SecureStrictTransportSecurityExcludeSubdomains, c.Secure.StrictTransportSecurity.ExcludeSubdomains, "Excludes subdomains from the HSTS policy, limiting it to the main domain only")
+				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.PreloadEnabled, SecureStrictTransportSecurityPreloadEnabled, c.Secure.StrictTransportSecurity.PreloadEnabled, "Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists")
 				groupFs.StringVar(&c.Secure.XContentTypeOptions, SecureXContentTypeOptions, c.Secure.XContentTypeOptions, "Sets the X-Content-Type-Options header to prevent MIME type sniffing")
 				groupFs.StringVar(&c.Secure.XFrameOptions, SecureXFrameOptions, c.Secure.XFrameOptions, "Sets the X-Frame-Options header to prevent clickjacking attacks")
 				return groupFs
