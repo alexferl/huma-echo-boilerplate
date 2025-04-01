@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	secure "github.com/alexferl/echo-secure"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
@@ -110,17 +111,25 @@ type RequestID struct {
 	TargetHeader string
 }
 
+type StrictTransportSecurity struct {
+	MaxAge            int
+	ExcludeSubdomains bool
+	PreloadEnabled    bool
+}
+
 type Secure struct {
 	Enabled                         bool
-	ContentSecurityPolicyReportOnly bool
 	ContentSecurityPolicy           string
-	ContentTypeNoSniff              string
-	HSTSExcludeSubdomains           bool
-	HSTSMaxAge                      int
-	HSTSPreloadEnabled              bool
+	ContentSecurityPolicyReportOnly bool
+	CrossOriginEmbedderPolicy       string
+	CrossOriginOpenerPolicy         string
+	CrossOriginResourcePolicy       string
+	PermissionsPolicy               string
 	ReferrerPolicy                  string
+	Server                          string
+	StrictTransportSecurity         StrictTransportSecurity
+	XContentTypeOptions             string
 	XFrameOptions                   string
-	XSSProtection                   string
 }
 
 type Session struct {
@@ -220,15 +229,21 @@ func New() *Config {
 		},
 		Secure: Secure{
 			Enabled:                         false,
-			ContentSecurityPolicy:           middleware.DefaultSecureConfig.ContentSecurityPolicy,
-			ContentSecurityPolicyReportOnly: middleware.DefaultSecureConfig.CSPReportOnly,
-			ContentTypeNoSniff:              middleware.DefaultSecureConfig.ContentTypeNosniff,
-			HSTSExcludeSubdomains:           middleware.DefaultSecureConfig.HSTSExcludeSubdomains,
-			HSTSMaxAge:                      middleware.DefaultSecureConfig.HSTSMaxAge,
-			HSTSPreloadEnabled:              middleware.DefaultSecureConfig.HSTSPreloadEnabled,
-			ReferrerPolicy:                  middleware.DefaultSecureConfig.ReferrerPolicy,
-			XFrameOptions:                   middleware.DefaultSecureConfig.XFrameOptions,
-			XSSProtection:                   middleware.DefaultSecureConfig.XSSProtection,
+			ContentSecurityPolicy:           secure.DefaultConfig.ContentSecurityPolicy,
+			ContentSecurityPolicyReportOnly: secure.DefaultConfig.ContentSecurityPolicyReportOnly,
+			CrossOriginEmbedderPolicy:       secure.DefaultConfig.CrossOriginEmbedderPolicy,
+			CrossOriginOpenerPolicy:         secure.DefaultConfig.CrossOriginOpenerPolicy,
+			CrossOriginResourcePolicy:       secure.DefaultConfig.CrossOriginResourcePolicy,
+			PermissionsPolicy:               secure.DefaultConfig.PermissionsPolicy,
+			ReferrerPolicy:                  secure.DefaultConfig.ReferrerPolicy,
+			Server:                          secure.DefaultConfig.Server,
+			StrictTransportSecurity: StrictTransportSecurity{
+				MaxAge:            secure.DefaultConfig.StrictTransportSecurity.MaxAge,
+				ExcludeSubdomains: secure.DefaultConfig.StrictTransportSecurity.ExcludeSubdomains,
+				PreloadEnabled:    secure.DefaultConfig.StrictTransportSecurity.PreloadEnabled,
+			},
+			XContentTypeOptions: secure.DefaultConfig.XContentTypeOptions,
+			XFrameOptions:       secure.DefaultConfig.XFrameOptions,
 		},
 		Session: Session{
 			Enabled: false,
@@ -322,16 +337,20 @@ const (
 	RequestIDEnabled      = "requestid-enabled"
 	RequestIDTargetHeader = "requestid-target-header"
 
-	SecureEnabled                         = "secure-enabled"
-	SecureContentSecurityPolicy           = "secure-content-security-policy"
-	SecureContentSecurityPolicyReportOnly = "secure-content-security-policy-report-only"
-	SecureContentTypeNoSniff              = "secure-content-type-no-sniff"
-	SecureHSTSExcludeSubdomains           = "secure-hsts-exclude-subdomains"
-	SecureHSTSMaxAge                      = "secure-hsts-max-age"
-	SecureHSTSPreloadEnabled              = "secure-hsts-preload-enabled"
-	SecureReferrerPolicy                  = "secure-referrer-policy"
-	SecureXFrameOptions                   = "secure-x-frame-options"
-	SecureXSSProtection                   = "secure-xss-protection"
+	SecureEnabled                                  = "secure-enabled"
+	SecureContentSecurityPolicy                    = "secure-content-security-policy"
+	SecureContentSecurityPolicyReportOnly          = "secure-content-security-policy-report-only"
+	SecureCrossOriginEmbedderPolicy                = "secure-cross-origin-embedder-policy"
+	SecureCrossOriginOpenerPolicy                  = "secure-cross-origin-opener-policy"
+	SecureCrossOriginResourcePolicy                = "secure-cross-origin-resource-policy"
+	SecurePermissionsPolicy                        = "secure-permissions-policy"
+	SecureReferrerPolicy                           = "secure-referrer-policy"
+	SecureServer                                   = "secure-server"
+	SecureStrictTransportSecurityMaxAge            = "secure-strict-transport-security-max-age"
+	SecureStrictTransportSecurityExcludeSubdomains = "secure-strict-transport-security-exclude-subdomains"
+	SecureStrictTransportSecurityPreloadEnabled    = "secure-strict-transport-security-preload-enabled"
+	SecureXContentTypeOptions                      = "secure-x-content-type-options"
+	SecureXFrameOptions                            = "secure-x-frame-options"
 
 	SessionEnabled                 = "session-enabled"
 	SessionStoreKind               = "session-store"
@@ -494,13 +513,17 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.BoolVar(&c.Secure.Enabled, SecureEnabled, c.Secure.Enabled, "Enables all security headers for enhanced protection against common web vulnerabilities")
 				groupFs.StringVar(&c.Secure.ContentSecurityPolicy, SecureContentSecurityPolicy, c.Secure.ContentSecurityPolicy, "Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks")
 				groupFs.BoolVar(&c.Secure.ContentSecurityPolicyReportOnly, SecureContentSecurityPolicyReportOnly, c.Secure.ContentSecurityPolicyReportOnly, "Enables report-only mode for CSP, which reports violations but doesn't enforce the policy")
-				groupFs.StringVar(&c.Secure.ContentTypeNoSniff, SecureContentTypeNoSniff, c.Secure.ContentTypeNoSniff, "Sets the X-Content-Type-Options header to prevent MIME type sniffing")
-				groupFs.BoolVar(&c.Secure.HSTSExcludeSubdomains, SecureHSTSExcludeSubdomains, c.Secure.HSTSExcludeSubdomains, "Excludes subdomains from the HSTS policy, limiting it to the main domain only")
-				groupFs.IntVar(&c.Secure.HSTSMaxAge, SecureHSTSMaxAge, c.Secure.HSTSMaxAge, "Sets the max age in seconds for the Strict-Transport-Security header")
-				groupFs.BoolVar(&c.Secure.HSTSPreloadEnabled, SecureHSTSPreloadEnabled, c.Secure.HSTSPreloadEnabled, "Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists")
+				groupFs.StringVar(&c.Secure.CrossOriginEmbedderPolicy, SecureCrossOriginEmbedderPolicy, c.Secure.CrossOriginEmbedderPolicy, "Controls which cross-origin resources can be loaded. Default \"require-corp\" only allows resources that explicitly grant permission.")
+				groupFs.StringVar(&c.Secure.CrossOriginOpenerPolicy, SecureCrossOriginOpenerPolicy, c.Secure.CrossOriginOpenerPolicy, "Controls window interactions between origins. Default \"same-origin\" restricts interactions to same-origin documents only.")
+				groupFs.StringVar(&c.Secure.CrossOriginResourcePolicy, SecureCrossOriginResourcePolicy, c.Secure.CrossOriginResourcePolicy, "Specifies which origins can include your resources. Default \"same-origin\" limits access to same-origin requests.")
+				groupFs.StringVar(&c.Secure.PermissionsPolicy, SecurePermissionsPolicy, c.Secure.PermissionsPolicy, "Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing.")
 				groupFs.StringVar(&c.Secure.ReferrerPolicy, SecureReferrerPolicy, c.Secure.ReferrerPolicy, "Sets the Referrer-Policy header to control how much referrer information is included with requests")
+				groupFs.StringVar(&c.Secure.Server, SecureServer, c.Secure.Server, "Sets a custom value for the HTTP Server header in responses.")
+				groupFs.IntVar(&c.Secure.StrictTransportSecurity.MaxAge, SecureStrictTransportSecurityMaxAge, c.Secure.StrictTransportSecurity.MaxAge, "Sets the max age in seconds for the Strict-Transport-Security header")
+				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.ExcludeSubdomains, SecureStrictTransportSecurityExcludeSubdomains, c.Secure.StrictTransportSecurity.ExcludeSubdomains, "Excludes subdomains from the Strict-Transport-Security policy, limiting it to the main domain only")
+				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.PreloadEnabled, SecureStrictTransportSecurityPreloadEnabled, c.Secure.StrictTransportSecurity.PreloadEnabled, "Adds the preload directive to the Strict-Transport-Security header, allowing the site to be included in browser preload lists")
+				groupFs.StringVar(&c.Secure.XContentTypeOptions, SecureXContentTypeOptions, c.Secure.XContentTypeOptions, "Sets the X-Content-Type-Options header to prevent MIME type sniffing")
 				groupFs.StringVar(&c.Secure.XFrameOptions, SecureXFrameOptions, c.Secure.XFrameOptions, "Sets the X-Frame-Options header to prevent clickjacking attacks")
-				groupFs.StringVar(&c.Secure.XSSProtection, SecureXSSProtection, c.Secure.XSSProtection, "Sets the X-XSS-Protection header to enable browser's built-in XSS filtering")
 				return groupFs
 			}(),
 		},

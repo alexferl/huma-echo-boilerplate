@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	secure "github.com/alexferl/echo-secure"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humaecho"
 	"github.com/gorilla/sessions"
@@ -123,16 +124,22 @@ func New() (*Service, error) {
 	}
 
 	if viper.GetBool(config.SecureEnabled) {
-		middlewares = append(middlewares, middleware.SecureWithConfig(middleware.SecureConfig{
-			XSSProtection:         viper.GetString(config.SecureXSSProtection),
-			ContentTypeNosniff:    viper.GetString(config.SecureContentTypeNoSniff),
-			XFrameOptions:         viper.GetString(config.SecureXFrameOptions),
-			HSTSMaxAge:            viper.GetInt(config.SecureHSTSMaxAge),
-			HSTSExcludeSubdomains: viper.GetBool(config.SecureHSTSExcludeSubdomains),
-			ContentSecurityPolicy: viper.GetString(config.SecureContentSecurityPolicy),
-			CSPReportOnly:         viper.GetBool(config.SecureContentSecurityPolicyReportOnly),
-			HSTSPreloadEnabled:    viper.GetBool(config.SecureHSTSPreloadEnabled),
-			ReferrerPolicy:        viper.GetString(config.SecureReferrerPolicy),
+		middlewares = append(middlewares, secure.New(secure.Config{
+			ContentSecurityPolicy:           viper.GetString(config.SecureContentSecurityPolicy),
+			ContentSecurityPolicyReportOnly: viper.GetBool(config.SecureContentSecurityPolicyReportOnly),
+			CrossOriginEmbedderPolicy:       viper.GetString(config.SecureCrossOriginEmbedderPolicy),
+			CrossOriginOpenerPolicy:         viper.GetString(config.SecureCrossOriginOpenerPolicy),
+			CrossOriginResourcePolicy:       viper.GetString(config.SecureCrossOriginResourcePolicy),
+			PermissionsPolicy:               viper.GetString(config.SecurePermissionsPolicy),
+			ReferrerPolicy:                  viper.GetString(config.SecureReferrerPolicy),
+			Server:                          viper.GetString(config.SecureServer),
+			StrictTransportSecurity: secure.StrictTransportSecurity{
+				MaxAge:            viper.GetInt(config.SecureStrictTransportSecurityMaxAge),
+				ExcludeSubdomains: viper.GetBool(config.SecureStrictTransportSecurityExcludeSubdomains),
+				PreloadEnabled:    viper.GetBool(config.SecureStrictTransportSecurityPreloadEnabled),
+			},
+			XContentTypeOptions: viper.GetString(config.SecureXContentTypeOptions),
+			XFrameOptions:       viper.GetString(config.SecureXFrameOptions),
 		}))
 	}
 

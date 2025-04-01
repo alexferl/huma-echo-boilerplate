@@ -3,6 +3,7 @@ module github.com/alexferl/huma-echo-boilerplate
 go 1.23.0
 
 require (
+	github.com/alexferl/echo-secure v0.2.0
 	github.com/danielgtaylor/huma/v2 v2.32.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/labstack/echo-contrib v0.17.3

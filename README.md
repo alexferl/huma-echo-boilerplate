@@ -103,16 +103,20 @@ Request ID middleware configuration options:
   --requestid-target-header string   Custom header for request ID (default X-Request-Id)
 
 Security headers configuration options:
-  --secure-enabled bool                               Enables all security headers for enhanced protection against common web vulnerabilities (default false)
-  --secure-content-security-policy string             Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks
-  --secure-content-security-policy-report-only bool   Enables report-only mode for CSP, which reports violations but doesn't enforce the policy (default false)
-  --secure-content-type-no-sniff string               Sets the X-Content-Type-Options header to prevent MIME type sniffing (default nosniff)
-  --secure-hsts-exclude-subdomains bool               Excludes subdomains from the HSTS policy, limiting it to the main domain only (default false)
-  --secure-hsts-max-age int                           Sets the max age in seconds for the Strict-Transport-Security header (default 0)
-  --secure-hsts-preload-enabled bool                  Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists (default false)
-  --secure-referrer-policy string                     Sets the Referrer-Policy header to control how much referrer information is included with requests
-  --secure-x-frame-options string                     Sets the X-Frame-Options header to prevent clickjacking attacks (default SAMEORIGIN)
-  --secure-xss-protection string                      Sets the X-XSS-Protection header to enable browser's built-in XSS filtering (default 1; mode=block)
+  --secure-enabled bool                                        Enables all security headers for enhanced protection against common web vulnerabilities (default false)
+  --secure-content-security-policy string                      Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks (default default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self';)
+  --secure-content-security-policy-report-only bool            Enables report-only mode for CSP, which reports violations but doesn't enforce the policy (default false)
+  --secure-cross-origin-embedder-policy string                 Controls which cross-origin resources can be loaded. Default "require-corp" only allows resources that explicitly grant permission. (default require-corp)
+  --secure-cross-origin-opener-policy string                   Controls window interactions between origins. Default "same-origin" restricts interactions to same-origin documents only. (default same-origin)
+  --secure-cross-origin-resource-policy string                 Specifies which origins can include your resources. Default "same-origin" limits access to same-origin requests. (default same-origin)
+  --secure-permissions-policy string                           Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing. (default accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=())
+  --secure-referrer-policy string                              Sets the Referrer-Policy header to control how much referrer information is included with requests (default no-referrer)
+  --secure-server string                                       Sets a custom value for the HTTP Server header in responses.
+  --secure-strict-transport-security-max-age int               Sets the max age in seconds for the Strict-Transport-Security header (default 0)
+  --secure-strict-transport-security-exclude-subdomains bool   Excludes subdomains from the Strict-Transport-Security policy, limiting it to the main domain only (default false)
+  --secure-strict-transport-security-preload-enabled bool      Adds the preload directive to the Strict-Transport-Security header, allowing the site to be included in browser preload lists (default false)
+  --secure-x-content-type-options string                       Sets the X-Content-Type-Options header to prevent MIME type sniffing (default nosniff)
+  --secure-x-frame-options string                              Sets the X-Frame-Options header to prevent clickjacking attacks (default DENY)
 
 Session middleware configuration options:
   --session-enabled bool                        Enables session management for maintaining user state across requests (default false)
