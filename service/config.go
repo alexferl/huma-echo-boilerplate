@@ -10,19 +10,13 @@ import (
 )
 
 type Config struct {
-	Name            string
-	BindAddr        string
-	GracefulTimeout time.Duration
-	LogRequests     bool
-	IdleTimeout     time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-
+	Name        string
 	BodyLimit   BodyLimit
 	Compress    Compress
 	CORS        CORS
 	CSRF        CSRF
 	Healthcheck Healthcheck
+	HTTP        HTTP
 	Prometheus  Prometheus
 	RateLimiter RateLimiter
 	Recover     Recover
@@ -74,6 +68,15 @@ type Healthcheck struct {
 	LivenessEndpoint  string
 	ReadinessEndpoint string
 	StartupEndpoint   string
+}
+
+type HTTP struct {
+	BindAddr        string
+	GracefulTimeout time.Duration
+	LogRequests     bool
+	IdleTimeout     time.Duration
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
 }
 
 type Prometheus struct {
@@ -167,12 +170,6 @@ type TLSACME struct {
 }
 
 var DefaultConfig = Config{
-	BindAddr:        "localhost:8080",
-	GracefulTimeout: 30 * time.Second,
-	LogRequests:     true,
-	IdleTimeout:     time.Minute,
-	ReadTimeout:     5 * time.Second,
-	WriteTimeout:    10 * time.Second,
 	BodyLimit: BodyLimit{
 		Limit: middleware.DefaultBodyLimitConfig.Limit,
 	},
@@ -207,6 +204,14 @@ var DefaultConfig = Config{
 		LivenessEndpoint:  healthcheck.DefaultConfig.LivenessEndpoint,
 		ReadinessEndpoint: healthcheck.DefaultConfig.ReadinessEndpoint,
 		StartupEndpoint:   healthcheck.DefaultConfig.StartupEndpoint,
+	},
+	HTTP: HTTP{
+		BindAddr:        "localhost:8080",
+		GracefulTimeout: 30 * time.Second,
+		LogRequests:     true,
+		IdleTimeout:     time.Minute,
+		ReadTimeout:     5 * time.Second,
+		WriteTimeout:    10 * time.Second,
 	},
 	Prometheus: Prometheus{
 		Enabled: false,

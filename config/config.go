@@ -47,13 +47,6 @@ const (
 	ConfigType   = "config-type"
 	ConfigPaths  = "config-paths"
 
-	BindAddr        = "bind-addr"
-	LogRequests     = "log-requests"
-	GracefulTimeout = "graceful-timeout"
-	IdleTimeout     = "idle-timeout"
-	ReadTimeout     = "read-timeout"
-	WriteTimeout    = "write-timeout"
-
 	BodyLimitLimit = "body-limit"
 
 	CompressEnabled   = "compress-enabled"
@@ -84,6 +77,13 @@ const (
 	HealthcheckLivenessEndpoint  = "healthcheck-liveness-endpoint"
 	HealthcheckReadinessEndpoint = "healthcheck-readiness-endpoint"
 	HealthcheckStartupEndpoint   = "healthcheck-startup-endpoint"
+
+	HTTPBindAddr        = "http-bind-addr"
+	HTTPLogRequests     = "http-log-requests"
+	HTTPGracefulTimeout = "http-graceful-timeout"
+	HTTPIdleTimeout     = "http-idle-timeout"
+	HTTPReadTimeout     = "http-read-timeout"
+	HTTPWriteTimeout    = "http-write-timeout"
 
 	PrometheusEnabled = "prometheus-enabled"
 	PrometheusPath    = "prometheus-path"
@@ -172,12 +172,39 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.StringVar(&c.ConfigPrefix, ConfigPrefix, c.ConfigPrefix, "Sets the prefix for configuration files to be loaded, e.g., \"config\" would match \"config.{env_name}.toml\"")
 				groupFs.StringVar(&c.ConfigType, ConfigType, c.ConfigType, "Defines the format of configuration files to be loaded\nValues: json, toml, or yaml")
 				groupFs.StringSliceVar(&c.ConfigPaths, ConfigPaths, c.ConfigPaths, "Specifies directories where configuration files will be searched for, in order of preference")
-				groupFs.StringVar(&c.Service.BindAddr, BindAddr, c.Service.BindAddr, "Specifies the host:port address for the HTTP server to listen on")
-				groupFs.DurationVar(&c.Service.GracefulTimeout, GracefulTimeout, c.Service.GracefulTimeout, "Sets the maximum time to wait for in-flight requests to complete before shutting down the server")
-				groupFs.BoolVar(&c.Service.LogRequests, LogRequests, c.Service.LogRequests, "Enables or disables logging of incoming HTTP requests")
-				groupFs.DurationVar(&c.Service.IdleTimeout, IdleTimeout, c.Service.IdleTimeout, "Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout.")
-				groupFs.DurationVar(&c.Service.ReadTimeout, ReadTimeout, c.Service.ReadTimeout, "Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout")
-				groupFs.DurationVar(&c.Service.WriteTimeout, WriteTimeout, c.Service.WriteTimeout, "Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout")
+				return groupFs
+			}(),
+		},
+		{
+			Desc:  "Logging configuration options",
+			Flags: c.Logger.FlagSet(),
+		},
+		{
+			Desc: "HTTP server configuration options",
+			Flags: func() *pflag.FlagSet {
+				groupFs := pflag.NewFlagSet("HTTP", pflag.ExitOnError)
+				groupFs.StringVar(&c.Service.HTTP.BindAddr, HTTPBindAddr, c.Service.HTTP.BindAddr, "Specifies the host:port address for the HTTP server to listen on")
+				groupFs.DurationVar(&c.Service.HTTP.GracefulTimeout, HTTPGracefulTimeout, c.Service.HTTP.GracefulTimeout, "Sets the maximum time to wait for in-flight requests to complete before shutting down the server")
+				groupFs.BoolVar(&c.Service.HTTP.LogRequests, HTTPLogRequests, c.Service.HTTP.LogRequests, "Enables or disables logging of incoming HTTP requests")
+				groupFs.DurationVar(&c.Service.HTTP.IdleTimeout, HTTPIdleTimeout, c.Service.HTTP.IdleTimeout, "Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout.")
+				groupFs.DurationVar(&c.Service.HTTP.ReadTimeout, HTTPReadTimeout, c.Service.HTTP.ReadTimeout, "Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout")
+				groupFs.DurationVar(&c.Service.HTTP.WriteTimeout, HTTPWriteTimeout, c.Service.HTTP.WriteTimeout, "Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout")
+				return groupFs
+			}(),
+		},
+		{
+			Desc: "TLS configuration options",
+			Flags: func() *pflag.FlagSet {
+				groupFs := pflag.NewFlagSet("TLS", pflag.ExitOnError)
+				groupFs.BoolVar(&c.Service.TLS.Enabled, TLSEnabled, c.Service.TLS.Enabled, "Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections")
+				groupFs.StringVar(&c.Service.TLS.BindAddr, TLSBindAddr, c.Service.TLS.BindAddr, "Specifies the host:port address for the HTTPS server to listen on")
+				groupFs.StringVar(&c.Service.TLS.CertFile, TLSCertFile, c.Service.TLS.CertFile, "Path to the TLS certificate file in PEM format containing the server's public key certificate")
+				groupFs.StringVar(&c.Service.TLS.KeyFile, TLSKeyFile, c.Service.TLS.KeyFile, "Path to the TLS private key file in PEM format corresponding to the certificate")
+				groupFs.BoolVar(&c.Service.TLS.ACME.Enabled, TLSACMEEnabled, c.Service.TLS.Enabled, "Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt)")
+				groupFs.StringVar(&c.Service.TLS.ACME.Email, TLSACMEEmail, c.Service.TLS.ACME.Email, "Email address used for ACME account registration and certificate renewal notifications")
+				groupFs.StringVar(&c.Service.TLS.ACME.CachePath, TLSACMECachePath, c.Service.TLS.ACME.CachePath, "Directory path where automatically provisioned TLS certificates will be stored")
+				groupFs.StringSliceVar(&c.Service.TLS.ACME.HostWhitelist, TLSACMEHostWhitelist, c.Service.TLS.ACME.HostWhitelist, "List of hostnames allowed for automatic certificate provisioning")
+				groupFs.StringVar(&c.Service.TLS.ACME.DirectoryURL, TLSACMEDirectoryURL, c.Service.TLS.ACME.DirectoryURL, "URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)")
 				return groupFs
 			}(),
 		},
@@ -241,10 +268,6 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.StringVar(&c.Service.Healthcheck.StartupEndpoint, HealthcheckStartupEndpoint, c.Service.Healthcheck.StartupEndpoint, "Path for the startup health check endpoint that indicates if the application has completed its initialization")
 				return groupFs
 			}(),
-		},
-		{
-			Desc:  "Logging configuration options",
-			Flags: c.Logger.FlagSet(),
 		},
 		{
 			Desc: "Prometheus configuration options",
@@ -352,22 +375,6 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.BoolVar(&c.Service.Timeout.Enabled, TimeoutEnabled, c.Service.Timeout.Enabled, "Enable request timeout middleware")
 				groupFs.StringVar(&c.Service.Timeout.ErrorMessage, TimeoutErrorMessage, c.Service.Timeout.ErrorMessage, "Custom error message when request times out")
 				groupFs.DurationVar(&c.Service.Timeout.Time, TimeoutTime, c.Service.Timeout.Time, "Maximum duration allowed for request processing")
-				return groupFs
-			}(),
-		},
-		{
-			Desc: "TLS configuration options",
-			Flags: func() *pflag.FlagSet {
-				groupFs := pflag.NewFlagSet("TLS", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Service.TLS.Enabled, TLSEnabled, c.Service.TLS.Enabled, "Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections")
-				groupFs.StringVar(&c.Service.TLS.BindAddr, TLSBindAddr, c.Service.TLS.BindAddr, "Specifies the host:port address for the HTTPS server to listen on")
-				groupFs.StringVar(&c.Service.TLS.CertFile, TLSCertFile, c.Service.TLS.CertFile, "Path to the TLS certificate file in PEM format containing the server's public key certificate")
-				groupFs.StringVar(&c.Service.TLS.KeyFile, TLSKeyFile, c.Service.TLS.KeyFile, "Path to the TLS private key file in PEM format corresponding to the certificate")
-				groupFs.BoolVar(&c.Service.TLS.ACME.Enabled, TLSACMEEnabled, c.Service.TLS.Enabled, "Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt)")
-				groupFs.StringVar(&c.Service.TLS.ACME.Email, TLSACMEEmail, c.Service.TLS.ACME.Email, "Email address used for ACME account registration and certificate renewal notifications")
-				groupFs.StringVar(&c.Service.TLS.ACME.CachePath, TLSACMECachePath, c.Service.TLS.ACME.CachePath, "Directory path where automatically provisioned TLS certificates will be stored")
-				groupFs.StringSliceVar(&c.Service.TLS.ACME.HostWhitelist, TLSACMEHostWhitelist, c.Service.TLS.ACME.HostWhitelist, "List of hostnames allowed for automatic certificate provisioning")
-				groupFs.StringVar(&c.Service.TLS.ACME.DirectoryURL, TLSACMEDirectoryURL, c.Service.TLS.ACME.DirectoryURL, "URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)")
 				return groupFs
 			}(),
 		},

@@ -24,18 +24,39 @@ These can be passed as CLI arguments, environment variables (`--app-name` -> `AP
 Usage: app [flags]
 
 Server configuration options:
-  --app-name string             Application name (default app)
-  --env-name string             Environment name (default local)
-  --config-prefix string        Sets the prefix for configuration files to be loaded, e.g., "config" would match "config.{env_name}.toml" (default config)
-  --config-type string          Defines the format of configuration files to be loaded (default toml)
-                                Values: json, toml, or yaml
-  --config-paths strings        Specifies directories where configuration files will be searched for, in order of preference (default [./configs,/configs])
-  --bind-addr string            Specifies the host:port address for the HTTP server to listen on (default localhost:8080)
-  --graceful-timeout duration   Sets the maximum time to wait for in-flight requests to complete before shutting down the server (default 30s)
-  --log-requests bool           Enables or disables logging of incoming HTTP requests (default true)
-  --idle-timeout duration       Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout. (default 1m0s)
-  --read-timeout duration       Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 5s)
-  --write-timeout duration      Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 10s)
+  --app-name string        Application name (default app)
+  --env-name string        Environment name (default local)
+  --config-prefix string   Sets the prefix for configuration files to be loaded, e.g., "config" would match "config.{env_name}.toml" (default config)
+  --config-type string     Defines the format of configuration files to be loaded (default toml)
+                           Values: json, toml, or yaml
+  --config-paths strings   Specifies directories where configuration files will be searched for, in order of preference (default [./configs,/configs])
+
+Logging configuration options:
+  --log-level string    Log granularity (default INFO)
+                        Values: PANIC, FATAL, ERROR, WARN, INFO, DISABLED, TRACE, DISABLED
+  --log-format string   Log format (default text)
+                        Values: text, json
+  --log-output string   Output destination (default stdout)
+                        Values: stdout, stderr
+
+HTTP server configuration options:
+  --http-bind-addr string            Specifies the host:port address for the HTTP server to listen on (default localhost:8080)
+  --http-graceful-timeout duration   Sets the maximum time to wait for in-flight requests to complete before shutting down the server (default 30s)
+  --http-log-requests bool           Enables or disables logging of incoming HTTP requests (default true)
+  --http-idle-timeout duration       Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout. (default 1m0s)
+  --http-read-timeout duration       Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 5s)
+  --http-write-timeout duration      Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 10s)
+
+TLS configuration options:
+  --tls-enabled bool                  Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections (default false)
+  --tls-bind-addr string              Specifies the host:port address for the HTTPS server to listen on (default localhost:8443)
+  --tls-cert-file string              Path to the TLS certificate file in PEM format containing the server's public key certificate
+  --tls-key-file string               Path to the TLS private key file in PEM format corresponding to the certificate
+  --tls-acme-enabled bool             Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt) (default false)
+  --tls-acme-email string             Email address used for ACME account registration and certificate renewal notifications
+  --tls-acme-cache-path string        Directory path where automatically provisioned TLS certificates will be stored (default ./certs)
+  --tls-acme-host-whitelist strings   List of hostnames allowed for automatic certificate provisioning (default [])
+  --tls-acme-directory-url string     URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)
 
 Body limit middleware configuration options:
   --body-limit string   Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
@@ -73,14 +94,6 @@ Healthcheck endpoints configuration options:
   --healthcheck-liveness-endpoint string    Path for the liveness health check endpoint that indicates if the application is running (default /livez)
   --healthcheck-readiness-endpoint string   Path for the readiness health check endpoint that indicates if the application is ready to receive traffic (default /readyz)
   --healthcheck-startup-endpoint string     Path for the startup health check endpoint that indicates if the application has completed its initialization (default /startupz)
-
-Logging configuration options:
-  --log-level string    Log granularity (default INFO)
-                        Values: PANIC, FATAL, ERROR, WARN, INFO, DISABLED, TRACE, DISABLED
-  --log-format string   Log format (default text)
-                        Values: text, json
-  --log-output string   Output destination (default stdout)
-                        Values: stdout, stderr
 
 Prometheus configuration options:
   --prometheus-enabled bool   Enables Prometheus metrics collection and exposure for application monitoring (default false)
@@ -148,15 +161,4 @@ Timeout middleware configuration options:
   --timeout-enabled bool           Enable request timeout middleware (default false)
   --timeout-error-message string   Custom error message when request times out
   --timeout-time duration          Maximum duration allowed for request processing (default 0s)
-
-TLS configuration options:
-  --tls-enabled bool                  Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections (default false)
-  --tls-bind-addr string              Specifies the host:port address for the HTTPS server to listen on (default localhost:8443)
-  --tls-cert-file string              Path to the TLS certificate file in PEM format containing the server's public key certificate
-  --tls-key-file string               Path to the TLS private key file in PEM format corresponding to the certificate
-  --tls-acme-enabled bool             Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt) (default false)
-  --tls-acme-email string             Email address used for ACME account registration and certificate renewal notifications
-  --tls-acme-cache-path string        Directory path where automatically provisioned TLS certificates will be stored (default ./certs)
-  --tls-acme-host-whitelist strings   List of hostnames allowed for automatic certificate provisioning (default [])
-  --tls-acme-directory-url string     URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)
 ```

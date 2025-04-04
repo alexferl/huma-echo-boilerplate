@@ -225,7 +225,7 @@ func New(cfg Config) (*Service, error) {
 		}))
 	}
 
-	if cfg.LogRequests {
+	if cfg.HTTP.LogRequests {
 		middlewares = append(middlewares, middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 			LogRequestID:     true,
 			LogRemoteIP:      true,
@@ -278,7 +278,7 @@ func New(cfg Config) (*Service, error) {
 }
 
 func (s *Service) Start() <-chan error {
-	s.httpServer = s.createServer(s.cfg.BindAddr, s.e)
+	s.httpServer = s.createServer(s.cfg.HTTP.BindAddr, s.e)
 
 	if !s.cfg.TLS.Enabled {
 		go func() {
@@ -312,7 +312,7 @@ func (s *Service) Start() <-chan error {
 
 		// HTTP server that listens on port 80 for challenges
 		if s.cfg.TLS.ACME.Enabled {
-			_, port, err := net.SplitHostPort(s.cfg.BindAddr)
+			_, port, err := net.SplitHostPort(s.cfg.HTTP.BindAddr)
 			if err != nil {
 				s.errCh <- fmt.Errorf("failed to split host/port: %w", err)
 				return s.errCh
@@ -406,9 +406,9 @@ func (s *Service) createServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:         addr,
 		Handler:      handler,
-		IdleTimeout:  s.cfg.IdleTimeout,
-		ReadTimeout:  s.cfg.ReadTimeout,
-		WriteTimeout: s.cfg.WriteTimeout,
+		IdleTimeout:  s.cfg.HTTP.IdleTimeout,
+		ReadTimeout:  s.cfg.HTTP.ReadTimeout,
+		WriteTimeout: s.cfg.HTTP.WriteTimeout,
 	}
 }
 

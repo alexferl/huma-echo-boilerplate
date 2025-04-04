@@ -39,10 +39,10 @@ func main() {
 	if cfg.Service.TLS.Enabled {
 		endpoints = append(endpoints, fmt.Sprintf("https://%s", cfg.Service.TLS.BindAddr))
 		if cfg.Service.Redirect.HTTPS || cfg.Service.TLS.ACME.Enabled {
-			endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.BindAddr))
+			endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.HTTP.BindAddr))
 		}
 	} else {
-		endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.BindAddr))
+		endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.HTTP.BindAddr))
 	}
 
 	pid := os.Getpid()
@@ -64,7 +64,7 @@ func main() {
 
 	log.Info().Msgf("%s shutting down", cfg.AppName)
 
-	timeout := cfg.Service.GracefulTimeout
+	timeout := cfg.Service.HTTP.GracefulTimeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
