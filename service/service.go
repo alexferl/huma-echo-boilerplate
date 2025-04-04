@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,138 +21,151 @@ import (
 	"github.com/rbcervilla/redisstore/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
+	"golang.org/x/crypto/acme"
+	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
 
 	humafiberboilerplate "github.com/alexferl/huma-echo-boilerplate"
-	"github.com/alexferl/huma-echo-boilerplate/config"
 	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
 )
 
 type Service struct {
-	e *echo.Echo
+	cfg         Config
+	e           *echo.Echo
+	httpServer  *http.Server
+	httpsServer *http.Server
+	errCh       chan error
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
-func New() (*Service, error) {
+func New(cfg Config) (*Service, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
 
-	service := &Service{
-		e: e,
+	srv := &Service{
+		cfg:    cfg,
+		e:      e,
+		errCh:  make(chan error, 10),
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	var middlewares []echo.MiddlewareFunc
-	if viper.GetString(config.BodyLimitLimit) != "" {
+
+	if cfg.BodyLimit.Limit != "" {
 		middlewares = append(middlewares, middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
-			Limit: viper.GetString(config.BodyLimitLimit),
+			Limit: cfg.BodyLimit.Limit,
 		}))
 	}
 
-	if viper.GetBool(config.CORSEnabled) {
+	if cfg.CORS.Enabled {
 		middlewares = append(middlewares, middleware.CORSWithConfig(middleware.CORSConfig{
-			AllowOrigins:     viper.GetStringSlice(config.CORSAllowOrigins),
-			AllowMethods:     viper.GetStringSlice(config.CORSAllowMethods),
-			AllowHeaders:     viper.GetStringSlice(config.CORSAllowHeaders),
-			AllowCredentials: viper.GetBool(config.CORSAllowCredentials),
-			ExposeHeaders:    viper.GetStringSlice(config.CORSExposeHeaders),
-			MaxAge:           viper.GetInt(config.CORSMaxAge),
+			AllowOrigins:     cfg.CORS.AllowOrigins,
+			AllowMethods:     cfg.CORS.AllowMethods,
+			AllowHeaders:     cfg.CORS.AllowHeaders,
+			AllowCredentials: cfg.CORS.AllowCredentials,
+			ExposeHeaders:    cfg.CORS.ExposeHeaders,
+			MaxAge:           cfg.CORS.MaxAge,
 		}))
 	}
 
-	if viper.GetBool(config.CSRFEnabled) {
+	if cfg.CSRF.Enabled {
 		middlewares = append(middlewares, middleware.CSRFWithConfig(middleware.CSRFConfig{
-			TokenLength:    viper.GetUint8(config.CSRFTokenLength),
-			TokenLookup:    viper.GetString(config.CSRFTokenLookup),
-			ContextKey:     viper.GetString(config.CSRFContextKey),
-			CookieName:     viper.GetString(config.CSRFCookieName),
-			CookieDomain:   viper.GetString(config.CSRFCookieDomain),
-			CookiePath:     viper.GetString(config.CSRFCookiePath),
-			CookieMaxAge:   viper.GetInt(config.CSRFCookieMaxAge),
-			CookieSecure:   viper.GetBool(config.CSRFCookieSecure),
-			CookieHTTPOnly: viper.GetBool(config.CSRFCookieHTTPOnly),
-			CookieSameSite: http.SameSite(viper.Get(config.CSRFCookieSameSite).(config.CSRFSameSiteMode)),
+			TokenLength:    cfg.CSRF.TokenLength,
+			TokenLookup:    cfg.CSRF.TokenLookup,
+			ContextKey:     cfg.CSRF.ContextKey,
+			CookieName:     cfg.CSRF.CookieName,
+			CookieDomain:   cfg.CSRF.CookieDomain,
+			CookiePath:     cfg.CSRF.CookiePath,
+			CookieMaxAge:   cfg.CSRF.CookieMaxAge,
+			CookieSecure:   cfg.CSRF.CookieSecure,
+			CookieHTTPOnly: cfg.CSRF.CookieHTTPOnly,
+			CookieSameSite: http.SameSite(cfg.CSRF.CookieSameSite),
 		}))
 	}
 
-	if viper.GetBool(config.CompressEnabled) {
+	if cfg.Compress.Enabled {
 		middlewares = append(middlewares, middleware.GzipWithConfig(middleware.GzipConfig{
-			Level:     viper.GetInt(config.CompressLevel),
-			MinLength: viper.GetInt(config.CompressMinLength),
+			Level:     cfg.Compress.Level,
+			MinLength: cfg.Compress.MinLength,
 		}))
 	}
 
-	if viper.GetBool(config.HealthcheckEnabled) {
+	if cfg.Healthcheck.Enabled {
 		healthcheck.New(e, healthcheck.Config{
-			LivenessEndpoint:  viper.GetString(config.HealthcheckLivenessEndpoint),
-			ReadinessEndpoint: viper.GetString(config.HealthcheckReadinessEndpoint),
-			StartupEndpoint:   viper.GetString(config.HealthcheckStartupEndpoint),
+			LivenessEndpoint:  cfg.Healthcheck.LivenessEndpoint,
+			ReadinessEndpoint: cfg.Healthcheck.ReadinessEndpoint,
+			StartupEndpoint:   cfg.Healthcheck.StartupEndpoint,
 		})
 	}
 
-	if viper.GetBool(config.PrometheusEnabled) {
+	if cfg.Prometheus.Enabled {
 		middlewares = append(middlewares, echoprometheus.NewMiddlewareWithConfig(echoprometheus.MiddlewareConfig{
 			Namespace: "",
-			Subsystem: viper.GetString(config.AppName),
+			Subsystem: cfg.Name,
 		}))
-		e.GET(viper.GetString(config.PrometheusPath), echoprometheus.NewHandler())
+		e.GET(srv.cfg.Prometheus.Path, echoprometheus.NewHandler())
 	}
 
-	if viper.GetBool(config.RateLimiterEnabled) {
-		switch viper.Get(config.RateLimiterStoreKind).(config.RateLimiterStore) {
-		case config.LimiterStoreMemory:
+	if cfg.RateLimiter.Enabled {
+		switch cfg.RateLimiter.Store {
+		case LimiterStoreMemory:
 			s := middleware.NewRateLimiterMemoryStoreWithConfig(middleware.RateLimiterMemoryStoreConfig{
-				Rate:      rate.Limit(viper.GetFloat64(config.RateLimiterMemoryRate)),
-				Burst:     viper.GetInt(config.RateLimiterMemoryBurst),
-				ExpiresIn: viper.GetDuration(config.RateLimiterMemoryExpiresIn),
+				Rate:      rate.Limit(cfg.RateLimiter.Memory.Rate),
+				Burst:     cfg.RateLimiter.Memory.Burst,
+				ExpiresIn: cfg.RateLimiter.Memory.ExpiresIn,
 			})
 
 			middlewares = append(middlewares, middleware.RateLimiter(s))
 		}
 	}
 
-	if viper.GetBool(config.RecoverEnabled) {
+	if cfg.Recover.Enabled {
 		middlewares = append(middlewares, middleware.RecoverWithConfig(middleware.RecoverConfig{
-			StackSize:           viper.GetInt(config.RecoverStackSize),
-			DisableStackAll:     viper.GetBool(config.RecoverDisableStackAll),
-			DisablePrintStack:   viper.GetBool(config.RecoverDisablePrintStack),
-			DisableErrorHandler: viper.GetBool(config.RecoverDisableErrorHandler),
+			StackSize:           cfg.Recover.StackSize,
+			DisableStackAll:     cfg.Recover.DisableStackAll,
+			DisablePrintStack:   cfg.Recover.DisablePrintStack,
+			DisableErrorHandler: cfg.Recover.DisableErrorHandler,
 		}))
 	}
 
-	if viper.GetBool(config.RequestIDEnabled) {
+	if cfg.RequestID.Enabled {
 		middlewares = append(middlewares, middleware.RequestIDWithConfig(middleware.RequestIDConfig{
-			TargetHeader: viper.GetString(config.RequestIDTargetHeader),
+			TargetHeader: cfg.RequestID.TargetHeader,
 		}))
 	}
 
-	if viper.GetBool(config.SecureEnabled) {
+	if cfg.Secure.Enabled {
 		middlewares = append(middlewares, secure.New(secure.Config{
-			ContentSecurityPolicy:           viper.GetString(config.SecureContentSecurityPolicy),
-			ContentSecurityPolicyReportOnly: viper.GetBool(config.SecureContentSecurityPolicyReportOnly),
-			CrossOriginEmbedderPolicy:       viper.GetString(config.SecureCrossOriginEmbedderPolicy),
-			CrossOriginOpenerPolicy:         viper.GetString(config.SecureCrossOriginOpenerPolicy),
-			CrossOriginResourcePolicy:       viper.GetString(config.SecureCrossOriginResourcePolicy),
-			PermissionsPolicy:               viper.GetString(config.SecurePermissionsPolicy),
-			ReferrerPolicy:                  viper.GetString(config.SecureReferrerPolicy),
-			Server:                          viper.GetString(config.SecureServer),
+			ContentSecurityPolicy:           cfg.Secure.ContentSecurityPolicy,
+			ContentSecurityPolicyReportOnly: cfg.Secure.ContentSecurityPolicyReportOnly,
+			CrossOriginEmbedderPolicy:       cfg.Secure.CrossOriginEmbedderPolicy,
+			CrossOriginOpenerPolicy:         cfg.Secure.CrossOriginOpenerPolicy,
+			CrossOriginResourcePolicy:       cfg.Secure.CrossOriginResourcePolicy,
+			PermissionsPolicy:               cfg.Secure.PermissionsPolicy,
+			ReferrerPolicy:                  cfg.Secure.ReferrerPolicy,
+			Server:                          cfg.Secure.Server,
 			StrictTransportSecurity: secure.StrictTransportSecurity{
-				MaxAge:            viper.GetInt(config.SecureStrictTransportSecurityMaxAge),
-				ExcludeSubdomains: viper.GetBool(config.SecureStrictTransportSecurityExcludeSubdomains),
-				PreloadEnabled:    viper.GetBool(config.SecureStrictTransportSecurityPreloadEnabled),
+				MaxAge:            cfg.Secure.StrictTransportSecurity.MaxAge,
+				ExcludeSubdomains: cfg.Secure.StrictTransportSecurity.ExcludeSubdomains,
+				PreloadEnabled:    cfg.Secure.StrictTransportSecurity.PreloadEnabled,
 			},
-			XContentTypeOptions: viper.GetString(config.SecureXContentTypeOptions),
-			XFrameOptions:       viper.GetString(config.SecureXFrameOptions),
+			XContentTypeOptions: srv.cfg.Secure.XContentTypeOptions,
+			XFrameOptions:       srv.cfg.Secure.XFrameOptions,
 		}))
 	}
 
-	if viper.GetBool(config.SessionEnabled) {
-		switch viper.Get(config.SessionStoreKind).(config.SessionStore) {
-		case config.SessionStoreCookie:
-			s := session.Middleware(sessions.NewCookieStore([]byte(viper.GetString(config.SessionCookieSecret))))
+	if cfg.Session.Enabled {
+		switch cfg.Session.Store {
+		case SessionStoreCookie:
+			s := session.Middleware(sessions.NewCookieStore([]byte(cfg.Session.Cookie.Secret)))
 			middlewares = append(middlewares, s)
-		case config.SessionStoreRedis:
-			opts, err := redis.ParseURL(viper.GetString(config.SessionRedisURI))
+		case SessionStoreRedis:
+			opts, err := redis.ParseURL(cfg.Session.Redis.URI)
 			if err != nil {
 				log.Fatal().Err(err).Msg("failed to parse redis uri")
 			}
@@ -162,10 +178,10 @@ func New() (*Service, error) {
 			}
 
 			middlewares = append(middlewares, session.Middleware(s))
-		case config.SessionStoreRedisSentinel:
+		case SessionStoreRedisSentinel:
 			client := redis.NewFailoverClient(&redis.FailoverOptions{
-				MasterName:    viper.GetString(config.SessionRedisSentinelMasterName),
-				SentinelAddrs: viper.GetStringSlice(config.SessionRedisSentinelAddrs),
+				MasterName:    cfg.Session.RedisSentinel.MasterName,
+				SentinelAddrs: cfg.Session.RedisSentinel.SentinelAddrs,
 			})
 
 			s, err := redisstore.NewRedisStore(context.Background(), client)
@@ -175,8 +191,8 @@ func New() (*Service, error) {
 
 			middlewares = append(middlewares, session.Middleware(s))
 
-		case config.SessionStoreRedisCluster:
-			opts, err := redis.ParseClusterURL(viper.GetString(config.SessionRedisClusterURI))
+		case SessionStoreRedisCluster:
+			opts, err := redis.ParseClusterURL(cfg.Session.RedisCluster.URI)
 			if err != nil {
 				log.Fatal().Err(err).Msg("failed to parse redis-cluster uri")
 			}
@@ -192,25 +208,24 @@ func New() (*Service, error) {
 		}
 	}
 
-	if viper.GetBool(config.StaticEnabled) {
-		fmt.Printf("PD RACE %s\n", viper.GetString(config.StaticRoot))
+	if cfg.Static.Enabled {
 		middlewares = append(middlewares, middleware.StaticWithConfig(middleware.StaticConfig{
-			Root:       viper.GetString(config.StaticRoot),
-			Index:      viper.GetString(config.StaticIndex),
-			HTML5:      viper.GetBool(config.StaticHTML5),
-			Browse:     viper.GetBool(config.StaticBrowse),
-			IgnoreBase: viper.GetBool(config.StaticIgnoreBase),
+			Root:       cfg.Static.Root,
+			Index:      cfg.Static.Index,
+			HTML5:      cfg.Static.HTML5,
+			Browse:     cfg.Static.Browse,
+			IgnoreBase: cfg.Static.IgnoreBase,
 		}))
 	}
 
-	if viper.GetBool(config.TimeoutEnabled) {
+	if cfg.Timeout.Enabled {
 		middlewares = append(middlewares, middleware.TimeoutWithConfig(middleware.TimeoutConfig{
-			ErrorMessage: viper.GetString(config.TimeoutErrorMessage),
-			Timeout:      viper.GetDuration(config.TimeoutTime),
+			ErrorMessage: cfg.Timeout.ErrorMessage,
+			Timeout:      cfg.Timeout.Time,
 		}))
 	}
 
-	if viper.GetBool(config.LogRequests) {
+	if cfg.LogRequests {
 		middlewares = append(middlewares, middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 			LogRequestID:     true,
 			LogRemoteIP:      true,
@@ -248,7 +263,7 @@ func New() (*Service, error) {
 
 	e.Use(middlewares...)
 
-	humaCfg := huma.DefaultConfig(viper.GetString(config.AppName), humafiberboilerplate.Version)
+	humaCfg := huma.DefaultConfig(cfg.Name, humafiberboilerplate.Version)
 	humaCfg.CreateHooks = nil
 	api := humaecho.New(e, humaCfg)
 
@@ -257,23 +272,171 @@ func New() (*Service, error) {
 		Path:        "/",
 		Summary:     "Hello",
 		Description: "Returns hello message",
-	}, service.Hello)
+	}, srv.Hello)
 
-	return service, nil
+	return srv, nil
 }
 
 func (s *Service) Start() <-chan error {
-	errCh := make(chan error, 1)
+	s.httpServer = s.createServer(s.cfg.BindAddr, s.e)
 
-	go func() {
-		if err := s.e.Start(viper.GetString(config.BindAddr)); err != nil {
-			errCh <- err
+	if !s.cfg.TLS.Enabled {
+		go func() {
+			if err := s.httpServer.ListenAndServe(); err != nil {
+				s.errCh <- fmt.Errorf("HTTP server error: %w", err)
+			}
+		}()
+	} else {
+		acmeClient := &acme.Client{}
+		autocertManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			Email:      s.cfg.TLS.ACME.Email,
+			HostPolicy: autocert.HostWhitelist(s.cfg.TLS.ACME.HostWhitelist...),
+			Cache:      autocert.DirCache(s.cfg.TLS.ACME.CachePath),
 		}
-	}()
 
-	return errCh
+		if s.cfg.TLS.ACME.DirectoryURL != "" {
+			acmeClient.DirectoryURL = s.cfg.TLS.ACME.DirectoryURL
+		}
+
+		autocertManager.Client = acmeClient
+
+		tlsConfig := &tls.Config{
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: defaultCurves,
+			CipherSuites:     getOptimalDefaultCipherSuites(),
+		}
+
+		s.httpsServer = s.createServer(s.cfg.TLS.BindAddr, s.e)
+		s.httpsServer.TLSConfig = tlsConfig
+
+		// HTTP server that listens on port 80 for challenges
+		if s.cfg.TLS.ACME.Enabled {
+			_, port, err := net.SplitHostPort(s.cfg.BindAddr)
+			if err != nil {
+				s.errCh <- fmt.Errorf("failed to split host/port: %w", err)
+				return s.errCh
+			}
+
+			if port != "80" {
+				s.errCh <- fmt.Errorf("bind-addr must be set to port 80 for the challenge server")
+				return s.errCh
+			}
+
+			s.httpServer.Handler = autocertManager.HTTPHandler(nil)
+			go func() {
+				if err := s.httpServer.ListenAndServe(); err != nil {
+					s.errCh <- fmt.Errorf("HTTP server error: %w", err)
+				}
+			}()
+		}
+
+		if !s.cfg.TLS.ACME.Enabled {
+			go func() {
+				if err := s.httpsServer.ListenAndServeTLS(
+					s.cfg.TLS.CertFile,
+					s.cfg.TLS.KeyFile,
+				); err != nil {
+					s.errCh <- fmt.Errorf("HTTPS server error: %w", err)
+				}
+			}()
+		} else {
+			_, port, err := net.SplitHostPort(s.cfg.TLS.BindAddr)
+			if err != nil {
+				s.errCh <- fmt.Errorf("failed to split host/port: %w", err)
+				return s.errCh
+			}
+
+			if port != "443" {
+				s.errCh <- fmt.Errorf("tls-bind-addr must be set to port 443 for auto TLS")
+				return s.errCh
+			}
+
+			tlsConfig.GetCertificate = autocertManager.GetCertificate
+			go func() {
+				if err := s.httpsServer.ListenAndServeTLS("", ""); err != nil {
+					s.errCh <- fmt.Errorf("HTTPS server error: %w", err)
+				}
+			}()
+		}
+
+		if s.cfg.Redirect.HTTPS && !s.cfg.TLS.ACME.Enabled {
+			s.e.Pre(s.redirect)
+			if s.httpServer.Handler == nil || s.httpServer.Handler == s.e {
+				go func() {
+					if err := s.httpServer.ListenAndServe(); err != nil {
+						s.errCh <- fmt.Errorf("HTTP server error: %w", err)
+					}
+				}()
+			}
+		}
+	}
+
+	return s.errCh
 }
 
 func (s *Service) Shutdown(ctx context.Context) error {
-	return s.e.Shutdown(ctx)
+	// signal all goroutines to stop
+	s.cancel()
+
+	var errs []error
+
+	if s.httpServer != nil {
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("HTTP server shutdown error: %w", err))
+		}
+	}
+
+	if s.httpsServer != nil {
+		if err := s.httpsServer.Shutdown(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("HTTPS server shutdown error: %w", err))
+		}
+	}
+
+	close(s.errCh)
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (s *Service) createServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         addr,
+		Handler:      handler,
+		IdleTimeout:  s.cfg.IdleTimeout,
+		ReadTimeout:  s.cfg.ReadTimeout,
+		WriteTimeout: s.cfg.WriteTimeout,
+	}
+}
+
+func (s *Service) redirect(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		req, scheme := c.Request(), c.Scheme()
+		if scheme != "https" {
+			host := req.Host
+
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+
+			_, tlsPort, err := net.SplitHostPort(s.cfg.TLS.BindAddr)
+			if err != nil {
+				return err
+			}
+
+			// if TLS port is the default (443), don't include it in the URL
+			portSuffix := ""
+			if tlsPort != "443" {
+				portSuffix = ":" + tlsPort
+			}
+
+			url := fmt.Sprintf("https://%s%s%s", host, portSuffix, req.RequestURI)
+			return c.Redirect(s.cfg.Redirect.Code, url)
+		}
+
+		return next(c)
+	}
 }

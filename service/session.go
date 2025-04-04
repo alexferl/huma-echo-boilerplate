@@ -1,4 +1,4 @@
-package config
+package service
 
 import (
 	"fmt"
@@ -38,7 +38,7 @@ const (
 	SessionStoreRedisSentinel SessionStore = sessionStoreRedisSentinel
 )
 
-var sessionStores = []string{sessionStoreCookie, sessionStoreRedis, sessionStoreRedisCluster, sessionStoreRedisSentinel}
+var SessionStores = []string{sessionStoreCookie, sessionStoreRedis, sessionStoreRedisCluster, sessionStoreRedisSentinel}
 
 func (s *SessionStore) String() string {
 	switch *s {
@@ -70,7 +70,7 @@ func (s *SessionStore) Set(value string) error {
 		*s = SessionStoreRedisSentinel
 		return nil
 	default:
-		return fmt.Errorf("invalid session store: %s (must be one of: %s)", value, strings.Join(sessionStores, ", "))
+		return fmt.Errorf("invalid session store: %s (must be one of: %s)", value, strings.Join(SessionStores, ", "))
 	}
 }
 

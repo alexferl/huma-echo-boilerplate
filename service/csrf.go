@@ -1,4 +1,4 @@
-package config
+package service
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ const (
 	CSRFSameSiteNoneMode
 )
 
-var csrfSameSiteModes = []string{csrfSameSiteDefaultMode, csrfSameSiteLaxMode, csrfSameSiteStrictMode, csrfSameSiteNoneMode}
+var CSRFSameSiteModes = []string{csrfSameSiteDefaultMode, csrfSameSiteLaxMode, csrfSameSiteStrictMode, csrfSameSiteNoneMode}
 
 func (m *CSRFSameSiteMode) String() string {
 	switch *m {
@@ -54,7 +54,7 @@ func (m *CSRFSameSiteMode) Set(value string) error {
 		*m = CSRFSameSiteMode(http.SameSiteNoneMode)
 		return nil
 	default:
-		return fmt.Errorf("invalid same site mode: %s (must be one of: %s)", value, strings.Join(csrfSameSiteModes, ", "))
+		return fmt.Errorf("invalid same site mode: %s (must be one of: %s)", value, strings.Join(CSRFSameSiteModes, ", "))
 	}
 }
 

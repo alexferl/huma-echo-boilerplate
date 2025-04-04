@@ -1,11 +1,12 @@
 module github.com/alexferl/huma-echo-boilerplate
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/alexferl/echo-secure v0.2.0
 	github.com/danielgtaylor/huma/v2 v2.32.0
 	github.com/gorilla/sessions v1.4.0
+	github.com/klauspost/cpuid/v2 v2.2.10
 	github.com/labstack/echo-contrib v0.17.3
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/rbcervilla/redisstore/v9 v9.0.0
@@ -15,6 +16,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.6.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/time v0.11.0
 )
 
@@ -46,7 +48,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect

@@ -2,7 +2,7 @@
 A [Huma](https://huma.rocks/) + [Echo](https://echo.labstack.com/) Go boilerplate.
 
 ## Requirements
-- Go 1.23+
+- Go 1.24+
 
 ## Using
 ```shell
@@ -30,9 +30,12 @@ Server configuration options:
   --config-type string          Defines the format of configuration files to be loaded (default toml)
                                 Values: json, toml, or yaml
   --config-paths strings        Specifies directories where configuration files will be searched for, in order of preference (default [./configs,/configs])
-  --bind-addr string            Server binding address (default 127.0.0.1:1323)
+  --bind-addr string            Specifies the host:port address for the HTTP server to listen on (default localhost:8080)
   --graceful-timeout duration   Sets the maximum time to wait for in-flight requests to complete before shutting down the server (default 30s)
   --log-requests bool           Enables or disables logging of incoming HTTP requests (default true)
+  --idle-timeout duration       Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout. (default 1m0s)
+  --read-timeout duration       Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 5s)
+  --write-timeout duration      Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 10s)
 
 Body limit middleware configuration options:
   --body-limit string   Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
@@ -93,10 +96,14 @@ Rate limiter middleware configuration options:
 
 Recover middleware configuration options:
   --recover-enabled bool                 Enable automatic recovery from panics (default true)
-  --recover-stack-size int               recover (default 4096)
+  --recover-stack-size int               Controls the size of the stack trace buffer in kilobytes that will be captured when a panic occurs (default 4096)
   --recover-disable-stack-all bool       Disables capturing the complete stack trace during panic recovery (default false)
   --recover-disable-print-stack bool     Prevents printing the stack trace when recovering from panics (default false)
   --recover-disable-error-handler bool   Disables the default error handler for panics, allowing the application to crash instead of recovering (default false)
+
+Redirect configuration options:
+  --redirect-https bool   Controls whether HTTP requests are redirected to HTTPS (default false)
+  --redirect-code int     Specifies the HTTP status code used for redirects (default 301)
 
 Request ID middleware configuration options:
   --requestid-enabled bool           Enable request ID middleware (default true)
@@ -106,12 +113,12 @@ Security headers configuration options:
   --secure-enabled bool                                        Enables all security headers for enhanced protection against common web vulnerabilities (default false)
   --secure-content-security-policy string                      Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks (default default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self';)
   --secure-content-security-policy-report-only bool            Enables report-only mode for CSP, which reports violations but doesn't enforce the policy (default false)
-  --secure-cross-origin-embedder-policy string                 Controls which cross-origin resources can be loaded. Default "require-corp" only allows resources that explicitly grant permission. (default require-corp)
-  --secure-cross-origin-opener-policy string                   Controls window interactions between origins. Default "same-origin" restricts interactions to same-origin documents only. (default same-origin)
-  --secure-cross-origin-resource-policy string                 Specifies which origins can include your resources. Default "same-origin" limits access to same-origin requests. (default same-origin)
-  --secure-permissions-policy string                           Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing. (default accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=())
+  --secure-cross-origin-embedder-policy string                 Controls which cross-origin resources can be loaded, default "require-corp" only allows resources that explicitly grant permission (default require-corp)
+  --secure-cross-origin-opener-policy string                   Controls window interactions between origins, default "same-origin" restricts interactions to same-origin documents only (default same-origin)
+  --secure-cross-origin-resource-policy string                 Specifies which origins can include your resources, default "same-origin" limits access to same-origin requests (default same-origin)
+  --secure-permissions-policy string                           Controls which browser features and APIs can be used, default policy disables potentially sensitive features like camera, geolocation, and payment processing (default accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=())
   --secure-referrer-policy string                              Sets the Referrer-Policy header to control how much referrer information is included with requests (default no-referrer)
-  --secure-server string                                       Sets a custom value for the HTTP Server header in responses.
+  --secure-server string                                       Sets a custom value for the HTTP Server header in responses
   --secure-strict-transport-security-max-age int               Sets the max age in seconds for the HTTP Strict-Transport-Security (HSTS) header (default 0)
   --secure-strict-transport-security-exclude-subdomains bool   Excludes subdomains from the HSTS policy, limiting it to the main domain only (default false)
   --secure-strict-transport-security-preload-enabled bool      Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists (default false)
@@ -141,4 +148,15 @@ Timeout middleware configuration options:
   --timeout-enabled bool           Enable request timeout middleware (default false)
   --timeout-error-message string   Custom error message when request times out
   --timeout-time duration          Maximum duration allowed for request processing (default 0s)
+
+TLS configuration options:
+  --tls-enabled bool                  Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections (default false)
+  --tls-bind-addr string              Specifies the host:port address for the HTTPS server to listen on (default localhost:8443)
+  --tls-cert-file string              Path to the TLS certificate file in PEM format containing the server's public key certificate
+  --tls-key-file string               Path to the TLS private key file in PEM format corresponding to the certificate
+  --tls-acme-enabled bool             Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt) (default false)
+  --tls-acme-email string             Email address used for ACME account registration and certificate renewal notifications
+  --tls-acme-cache-path string        Directory path where automatically provisioned TLS certificates will be stored (default ./certs)
+  --tls-acme-host-whitelist strings   List of hostnames allowed for automatic certificate provisioning (default [])
+  --tls-acme-directory-url string     URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)
 ```

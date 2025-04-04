@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/alexferl/huma-echo-boilerplate/config"
@@ -26,34 +27,48 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to set GOMAXPROCS")
 	}
 
-	appName := viper.GetString(config.AppName)
-	srv, err := service.New()
+	cfg.Service.Name = cfg.AppName
+	srv, err := service.New(cfg.Service)
 	if err != nil {
-		log.Fatal().Err(err).Msgf("failed creating %s service", appName)
+		log.Fatal().Err(err).Msgf("failed to create %s service", cfg.AppName)
 	}
 
 	errCh := srv.Start()
 
-	log.Info().Msgf(
-		"%s started successfully, listening on http://%s",
-		appName, viper.GetString(config.BindAddr),
-	)
+	var endpoints []string
+	if cfg.Service.TLS.Enabled {
+		endpoints = append(endpoints, fmt.Sprintf("https://%s", cfg.Service.TLS.BindAddr))
+		if cfg.Service.Redirect.HTTPS || cfg.Service.TLS.ACME.Enabled {
+			endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.BindAddr))
+		}
+	} else {
+		endpoints = append(endpoints, fmt.Sprintf("http://%s", cfg.Service.BindAddr))
+	}
+
+	pid := os.Getpid()
+
+	log.Info().
+		Int("pid", pid).
+		Msgf("%s started successfully, listening on %s", cfg.AppName, strings.Join(endpoints, " "))
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 	select {
 	case err := <-errCh:
-		log.Fatal().Err(err).Msgf("failed starting %s service", appName)
+		log.Error().Err(err).Msgf("error in %s service", cfg.AppName)
+		// continue to shut down logic regardless of error
 	case <-sig:
-		log.Info().Msgf("signal received, %s shutting down", viper.GetString(config.AppName))
+		// signal received, proceed to shut down
+	}
 
-		timeout := viper.GetDuration(config.GracefulTimeout)
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+	log.Info().Msgf("%s shutting down", cfg.AppName)
 
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Fatal().Err(err).Send()
-		}
+	timeout := cfg.Service.GracefulTimeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("error during shutdown")
 	}
 }

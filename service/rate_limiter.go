@@ -1,4 +1,4 @@
-package config
+package service
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ const (
 	LimiterStoreMemory RateLimiterStore = limiterStoreMemory
 )
 
-var limiterStores = []string{limiterStoreMemory}
+var LimiterStores = []string{limiterStoreMemory}
 
 func (s *RateLimiterStore) String() string {
 	switch *s {
@@ -39,7 +39,7 @@ func (s *RateLimiterStore) Set(value string) error {
 		*s = LimiterStoreMemory
 		return nil
 	default:
-		return fmt.Errorf("invalid rate limiter store: %s (must be one of: %s)", value, strings.Join(limiterStores, ", "))
+		return fmt.Errorf("invalid rate limiter store: %s (must be one of: %s)", value, strings.Join(LimiterStores, ", "))
 	}
 }
 

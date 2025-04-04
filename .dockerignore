@@ -25,3 +25,7 @@ Makefile
 
 # binary
 app-bin
+
+# TLS
+cert.pem
+key.pem

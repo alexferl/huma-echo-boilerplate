@@ -7,286 +7,52 @@ import (
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
-	"time"
 
-	secure "github.com/alexferl/echo-secure"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
 	"github.com/alexferl/huma-echo-boilerplate/logger"
+	"github.com/alexferl/huma-echo-boilerplate/service"
 )
 
 // Config holds all global configuration for our program.
 type Config struct {
-	AppName         string
-	EnvName         string
-	ConfigPrefix    string
-	ConfigType      string
-	ConfigPaths     []string
-	BindAddr        string
-	GracefulTimeout time.Duration
-	LogRequests     bool
-
-	Logger      *logger.Config
-	BodyLimit   BodyLimit
-	Compress    Compress
-	CORS        CORS
-	CSRF        CSRF
-	Healthcheck Healthcheck
-	Prometheus  Prometheus
-	RateLimiter RateLimiter
-	Recover     Recover
-	RequestID   RequestID
-	Secure      Secure
-	Session     Session
-	Static      Static
-	Timeout     Timeout
-}
-
-type BodyLimit struct {
-	Limit string
-}
-
-type Compress struct {
-	Enabled   bool
-	Level     int
-	MinLength int
-}
-
-type CORS struct {
-	Enabled          bool
-	AllowOrigins     []string
-	AllowMethods     []string
-	AllowHeaders     []string
-	AllowCredentials bool
-	ExposeHeaders    []string
-	MaxAge           int
-}
-
-type CSRF struct {
-	Enabled        bool
-	TokenLength    uint8
-	TokenLookup    string
-	ContextKey     string
-	CookieName     string
-	CookieDomain   string
-	CookiePath     string
-	CookieMaxAge   int
-	CookieSecure   bool
-	CookieHTTPOnly bool
-	CookieSameSite CSRFSameSiteMode
-}
-
-type Healthcheck struct {
-	Enabled           bool
-	LivenessEndpoint  string
-	ReadinessEndpoint string
-	StartupEndpoint   string
-}
-
-type Prometheus struct {
-	Enabled bool
-	Path    string
-}
-
-type RateLimiter struct {
-	Enabled bool
-	Store   RateLimiterStore
-	Memory  RateLimiterMemoryStore
-}
-
-type Recover struct {
-	Enabled             bool
-	StackSize           int
-	DisableStackAll     bool
-	DisablePrintStack   bool
-	DisableErrorHandler bool
-}
-
-type RequestID struct {
-	Enabled      bool
-	TargetHeader string
-}
-
-type StrictTransportSecurity struct {
-	MaxAge            int
-	ExcludeSubdomains bool
-	PreloadEnabled    bool
-}
-
-type Secure struct {
-	Enabled                         bool
-	ContentSecurityPolicy           string
-	ContentSecurityPolicyReportOnly bool
-	CrossOriginEmbedderPolicy       string
-	CrossOriginOpenerPolicy         string
-	CrossOriginResourcePolicy       string
-	PermissionsPolicy               string
-	ReferrerPolicy                  string
-	Server                          string
-	StrictTransportSecurity         StrictTransportSecurity
-	XContentTypeOptions             string
-	XFrameOptions                   string
-}
-
-type Session struct {
-	Enabled       bool
-	Store         SessionStore
-	Cookie        SessionCookieStore
-	Redis         SessionRedisStore
-	RedisSentinel SessionRedisSentinelStore
-	RedisCluster  SessionRedisClusterStore
-}
-
-type Static struct {
-	Enabled    bool
-	Root       string
-	Index      string
-	HTML5      bool
-	Browse     bool
-	IgnoreBase bool
-}
-
-type Timeout struct {
-	Enabled      bool
-	ErrorMessage string
-	Timeout      time.Duration
+	AppName      string
+	EnvName      string
+	ConfigPrefix string
+	ConfigType   string
+	ConfigPaths  []string
+	Logger       *logger.Config
+	Service      service.Config
 }
 
 // New creates a Config instance.
 func New() *Config {
 	return &Config{
-		AppName:         "app",
-		EnvName:         "local",
-		ConfigPrefix:    "config",
-		ConfigType:      "toml",
-		ConfigPaths:     []string{"./configs", "/configs"},
-		BindAddr:        "127.0.0.1:1323",
-		GracefulTimeout: 30 * time.Second,
-		LogRequests:     true,
-		Logger:          logger.DefaultConfig,
-		BodyLimit: BodyLimit{
-			Limit: middleware.DefaultBodyLimitConfig.Limit,
-		},
-		Compress: Compress{
-			Enabled:   true,
-			Level:     6,
-			MinLength: 1400,
-		},
-		CORS: CORS{
-			Enabled:          false,
-			AllowOrigins:     middleware.DefaultCORSConfig.AllowOrigins,
-			AllowMethods:     middleware.DefaultCORSConfig.AllowMethods,
-			AllowHeaders:     middleware.DefaultCORSConfig.AllowHeaders,
-			AllowCredentials: middleware.DefaultCORSConfig.AllowCredentials,
-			ExposeHeaders:    middleware.DefaultCORSConfig.ExposeHeaders,
-			MaxAge:           middleware.DefaultCORSConfig.MaxAge,
-		},
-		CSRF: CSRF{
-			Enabled:        false,
-			TokenLength:    middleware.DefaultCSRFConfig.TokenLength,
-			TokenLookup:    middleware.DefaultCSRFConfig.TokenLookup,
-			ContextKey:     middleware.DefaultCSRFConfig.ContextKey,
-			CookieName:     middleware.DefaultCSRFConfig.CookieName,
-			CookieDomain:   middleware.DefaultCSRFConfig.CookieDomain,
-			CookiePath:     middleware.DefaultCSRFConfig.CookiePath,
-			CookieMaxAge:   middleware.DefaultCSRFConfig.CookieMaxAge,
-			CookieHTTPOnly: middleware.DefaultCSRFConfig.CookieHTTPOnly,
-			CookieSameSite: CSRFSameSiteMode(middleware.DefaultCSRFConfig.CookieSameSite),
-		},
-		Healthcheck: Healthcheck{
-			Enabled:           false,
-			LivenessEndpoint:  healthcheck.DefaultConfig.LivenessEndpoint,
-			ReadinessEndpoint: healthcheck.DefaultConfig.ReadinessEndpoint,
-			StartupEndpoint:   healthcheck.DefaultConfig.StartupEndpoint,
-		},
-		Prometheus: Prometheus{
-			Enabled: false,
-			Path:    "/metrics",
-		},
-		RateLimiter: RateLimiter{
-			Enabled: false,
-			Store:   LimiterStoreMemory,
-			Memory: RateLimiterMemoryStore{
-				Rate:      float64(middleware.DefaultRateLimiterMemoryStoreConfig.Rate),
-				Burst:     middleware.DefaultRateLimiterMemoryStoreConfig.Burst,
-				ExpiresIn: middleware.DefaultRateLimiterMemoryStoreConfig.ExpiresIn,
-			},
-		},
-		Recover: Recover{
-			Enabled:             true,
-			StackSize:           middleware.DefaultRecoverConfig.StackSize,
-			DisableStackAll:     middleware.DefaultRecoverConfig.DisableStackAll,
-			DisablePrintStack:   middleware.DefaultRecoverConfig.DisablePrintStack,
-			DisableErrorHandler: middleware.DefaultRecoverConfig.DisableErrorHandler,
-		},
-		RequestID: RequestID{
-			Enabled:      true,
-			TargetHeader: middleware.DefaultRequestIDConfig.TargetHeader,
-		},
-		Secure: Secure{
-			Enabled:                         false,
-			ContentSecurityPolicy:           secure.DefaultConfig.ContentSecurityPolicy,
-			ContentSecurityPolicyReportOnly: secure.DefaultConfig.ContentSecurityPolicyReportOnly,
-			CrossOriginEmbedderPolicy:       secure.DefaultConfig.CrossOriginEmbedderPolicy,
-			CrossOriginOpenerPolicy:         secure.DefaultConfig.CrossOriginOpenerPolicy,
-			CrossOriginResourcePolicy:       secure.DefaultConfig.CrossOriginResourcePolicy,
-			PermissionsPolicy:               secure.DefaultConfig.PermissionsPolicy,
-			ReferrerPolicy:                  secure.DefaultConfig.ReferrerPolicy,
-			Server:                          secure.DefaultConfig.Server,
-			StrictTransportSecurity: StrictTransportSecurity{
-				MaxAge:            secure.DefaultConfig.StrictTransportSecurity.MaxAge,
-				ExcludeSubdomains: secure.DefaultConfig.StrictTransportSecurity.ExcludeSubdomains,
-				PreloadEnabled:    secure.DefaultConfig.StrictTransportSecurity.PreloadEnabled,
-			},
-			XContentTypeOptions: secure.DefaultConfig.XContentTypeOptions,
-			XFrameOptions:       secure.DefaultConfig.XFrameOptions,
-		},
-		Session: Session{
-			Enabled: false,
-			Store:   sessionStoreCookie,
-			Cookie: SessionCookieStore{
-				Secret: "changeme",
-			},
-			Redis: SessionRedisStore{
-				URI: "redis://localhost:6379",
-			},
-			RedisSentinel: SessionRedisSentinelStore{
-				MasterName:    "mymaster",
-				SentinelAddrs: []string{"localhost:6379"},
-			},
-			RedisCluster: SessionRedisClusterStore{
-				URI: "redis://localhost:6379",
-			},
-		},
-		Static: Static{
-			Enabled:    false,
-			Root:       middleware.DefaultStaticConfig.Root,
-			Index:      middleware.DefaultStaticConfig.Index,
-			HTML5:      middleware.DefaultStaticConfig.HTML5,
-			Browse:     middleware.DefaultStaticConfig.Browse,
-			IgnoreBase: middleware.DefaultStaticConfig.IgnoreBase,
-		},
-		Timeout: Timeout{
-			Enabled:      false,
-			ErrorMessage: middleware.DefaultTimeoutConfig.ErrorMessage,
-			Timeout:      middleware.DefaultTimeoutConfig.Timeout,
-		},
+		AppName:      "app",
+		EnvName:      "local",
+		ConfigPrefix: "config",
+		ConfigType:   "toml",
+		ConfigPaths:  []string{"./configs", "/configs"},
+		Logger:       logger.DefaultConfig,
+		Service:      service.DefaultConfig,
 	}
 }
 
 const (
-	AppName         = "app-name"
-	EnvName         = "env-name"
-	ConfigPrefix    = "config-prefix"
-	ConfigType      = "config-type"
-	ConfigPaths     = "config-paths"
+	AppName      = "app-name"
+	EnvName      = "env-name"
+	ConfigPrefix = "config-prefix"
+	ConfigType   = "config-type"
+	ConfigPaths  = "config-paths"
+
 	BindAddr        = "bind-addr"
-	GracefulTimeout = "graceful-timeout"
 	LogRequests     = "log-requests"
+	GracefulTimeout = "graceful-timeout"
+	IdleTimeout     = "idle-timeout"
+	ReadTimeout     = "read-timeout"
+	WriteTimeout    = "write-timeout"
 
 	BodyLimitLimit = "body-limit"
 
@@ -334,6 +100,9 @@ const (
 	RecoverDisablePrintStack   = "recover-disable-print-stack"
 	RecoverDisableErrorHandler = "recover-disable-error-handler"
 
+	RedirectHTTPS = "redirect-https"
+	RedirectCode  = "redirect-code"
+
 	RequestIDEnabled      = "requestid-enabled"
 	RequestIDTargetHeader = "requestid-target-header"
 
@@ -370,6 +139,16 @@ const (
 	TimeoutEnabled      = "timeout-enabled"
 	TimeoutErrorMessage = "timeout-error-message"
 	TimeoutTime         = "timeout-time"
+
+	TLSEnabled           = "tls-enabled"
+	TLSBindAddr          = "tls-bind-addr"
+	TLSCertFile          = "tls-cert-file"
+	TLSKeyFile           = "tls-key-file"
+	TLSACMEEnabled       = "tls-acme-enabled"
+	TLSACMEEmail         = "tls-acme-email"
+	TLSACMECachePath     = "tls-acme-cache-path"
+	TLSACMEHostWhitelist = "tls-acme-host-whitelist"
+	TLSACMEDirectoryURL  = "tls-acme-directory-url"
 )
 
 type FlagGroup struct {
@@ -393,9 +172,12 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.StringVar(&c.ConfigPrefix, ConfigPrefix, c.ConfigPrefix, "Sets the prefix for configuration files to be loaded, e.g., \"config\" would match \"config.{env_name}.toml\"")
 				groupFs.StringVar(&c.ConfigType, ConfigType, c.ConfigType, "Defines the format of configuration files to be loaded\nValues: json, toml, or yaml")
 				groupFs.StringSliceVar(&c.ConfigPaths, ConfigPaths, c.ConfigPaths, "Specifies directories where configuration files will be searched for, in order of preference")
-				groupFs.StringVar(&c.BindAddr, BindAddr, c.BindAddr, "Server binding address")
-				groupFs.DurationVar(&c.GracefulTimeout, GracefulTimeout, c.GracefulTimeout, "Sets the maximum time to wait for in-flight requests to complete before shutting down the server")
-				groupFs.BoolVar(&c.LogRequests, LogRequests, c.LogRequests, "Enables or disables logging of incoming HTTP requests")
+				groupFs.StringVar(&c.Service.BindAddr, BindAddr, c.Service.BindAddr, "Specifies the host:port address for the HTTP server to listen on")
+				groupFs.DurationVar(&c.Service.GracefulTimeout, GracefulTimeout, c.Service.GracefulTimeout, "Sets the maximum time to wait for in-flight requests to complete before shutting down the server")
+				groupFs.BoolVar(&c.Service.LogRequests, LogRequests, c.Service.LogRequests, "Enables or disables logging of incoming HTTP requests")
+				groupFs.DurationVar(&c.Service.IdleTimeout, IdleTimeout, c.Service.IdleTimeout, "Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout.")
+				groupFs.DurationVar(&c.Service.ReadTimeout, ReadTimeout, c.Service.ReadTimeout, "Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout")
+				groupFs.DurationVar(&c.Service.WriteTimeout, WriteTimeout, c.Service.WriteTimeout, "Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout")
 				return groupFs
 			}(),
 		},
@@ -403,7 +185,7 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Body limit middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Body Limit", pflag.ExitOnError)
-				groupFs.StringVar(&c.BodyLimit.Limit, BodyLimitLimit, c.BodyLimit.Limit, "Sets the maximum allowed size of the request body, use values like \"100K\", \"10M\" or \"1G\"")
+				groupFs.StringVar(&c.Service.BodyLimit.Limit, BodyLimitLimit, c.Service.BodyLimit.Limit, "Sets the maximum allowed size of the request body, use values like \"100K\", \"10M\" or \"1G\"")
 				return groupFs
 			}(),
 		},
@@ -411,9 +193,9 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Compress middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Compress", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Compress.Enabled, CompressEnabled, c.Compress.Enabled, "Enable compression")
-				groupFs.IntVar(&c.Compress.Level, CompressLevel, c.Compress.Level, "Compression level")
-				groupFs.IntVar(&c.Compress.MinLength, CompressMinLength, c.Compress.MinLength, "Minimum response size in bytes before compression is applied")
+				groupFs.BoolVar(&c.Service.Compress.Enabled, CompressEnabled, c.Service.Compress.Enabled, "Enable compression")
+				groupFs.IntVar(&c.Service.Compress.Level, CompressLevel, c.Service.Compress.Level, "Compression level")
+				groupFs.IntVar(&c.Service.Compress.MinLength, CompressMinLength, c.Service.Compress.MinLength, "Minimum response size in bytes before compression is applied")
 				return groupFs
 			}(),
 		},
@@ -421,13 +203,13 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "CORS middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("CORS", pflag.ExitOnError)
-				groupFs.BoolVar(&c.CORS.Enabled, CORSEnabled, c.CORS.Enabled, "Enable CORS middleware")
-				groupFs.StringSliceVar(&c.CORS.AllowOrigins, CORSAllowOrigins, c.CORS.AllowOrigins, "Allowed origins for CORS requests")
-				groupFs.StringSliceVar(&c.CORS.AllowMethods, CORSAllowMethods, c.CORS.AllowMethods, "Allowed HTTP methods in CORS request")
-				groupFs.StringSliceVar(&c.CORS.AllowHeaders, CORSAllowHeaders, c.CORS.AllowHeaders, "Allowed headers in CORS requests")
-				groupFs.BoolVar(&c.CORS.AllowCredentials, CORSAllowCredentials, c.CORS.AllowCredentials, "Allow credentials in CORS requests")
-				groupFs.StringSliceVar(&c.CORS.ExposeHeaders, CORSExposeHeaders, c.CORS.ExposeHeaders, "Headers exposed to browsers in CORS responses")
-				groupFs.IntVar(&c.CORS.MaxAge, CORSMaxAge, c.CORS.MaxAge, "Max age (in seconds) for CORS preflight responses")
+				groupFs.BoolVar(&c.Service.CORS.Enabled, CORSEnabled, c.Service.CORS.Enabled, "Enable CORS middleware")
+				groupFs.StringSliceVar(&c.Service.CORS.AllowOrigins, CORSAllowOrigins, c.Service.CORS.AllowOrigins, "Allowed origins for CORS requests")
+				groupFs.StringSliceVar(&c.Service.CORS.AllowMethods, CORSAllowMethods, c.Service.CORS.AllowMethods, "Allowed HTTP methods in CORS request")
+				groupFs.StringSliceVar(&c.Service.CORS.AllowHeaders, CORSAllowHeaders, c.Service.CORS.AllowHeaders, "Allowed headers in CORS requests")
+				groupFs.BoolVar(&c.Service.CORS.AllowCredentials, CORSAllowCredentials, c.Service.CORS.AllowCredentials, "Allow credentials in CORS requests")
+				groupFs.StringSliceVar(&c.Service.CORS.ExposeHeaders, CORSExposeHeaders, c.Service.CORS.ExposeHeaders, "Headers exposed to browsers in CORS responses")
+				groupFs.IntVar(&c.Service.CORS.MaxAge, CORSMaxAge, c.Service.CORS.MaxAge, "Max age (in seconds) for CORS preflight responses")
 				return groupFs
 			}(),
 		},
@@ -435,17 +217,17 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "CSRF middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("CSRF", pflag.ExitOnError)
-				groupFs.BoolVar(&c.CSRF.Enabled, CSRFEnabled, c.CSRF.Enabled, "Enable CSRF protection middleware")
-				groupFs.Uint8Var(&c.CSRF.TokenLength, CSRFTokenLength, c.CSRF.TokenLength, "Length of generated CSRF token in bytes")
-				groupFs.StringVar(&c.CSRF.TokenLookup, CSRFTokenLookup, c.CSRF.TokenLookup, "Location to extract CSRF token from request")
-				groupFs.StringVar(&c.CSRF.ContextKey, CSRFContextKey, c.CSRF.ContextKey, "Key used to store CSRF token in context")
-				groupFs.StringVar(&c.CSRF.CookieName, CSRFCookieName, c.CSRF.CookieName, "Name of the CSRF cookie")
-				groupFs.StringVar(&c.CSRF.CookieDomain, CSRFCookieDomain, c.CSRF.CookieDomain, "Domain attribute for CSRF cookie")
-				groupFs.StringVar(&c.CSRF.CookiePath, CSRFCookiePath, c.CSRF.CookiePath, "Path attribute for CSRF cookie")
-				groupFs.IntVar(&c.CSRF.CookieMaxAge, CSRFCookieMaxAge, c.CSRF.CookieMaxAge, "Maximum age in seconds for CSRF cookie ")
-				groupFs.BoolVar(&c.CSRF.CookieSecure, CSRFCookieSecure, c.CSRF.CookieSecure, "Set Secure flag on CSRF cookie")
-				groupFs.BoolVar(&c.CSRF.CookieHTTPOnly, CSRFCookieHTTPOnly, c.CSRF.CookieHTTPOnly, "Set HttpOnly flag on CSRF cookie")
-				groupFs.Var(&c.CSRF.CookieSameSite, CSRFCookieSameSite, fmt.Sprintf("SameSite attribute for CSRF cookie\nValues: %s", strings.Join(csrfSameSiteModes, ", ")))
+				groupFs.BoolVar(&c.Service.CSRF.Enabled, CSRFEnabled, c.Service.CSRF.Enabled, "Enable CSRF protection middleware")
+				groupFs.Uint8Var(&c.Service.CSRF.TokenLength, CSRFTokenLength, c.Service.CSRF.TokenLength, "Length of generated CSRF token in bytes")
+				groupFs.StringVar(&c.Service.CSRF.TokenLookup, CSRFTokenLookup, c.Service.CSRF.TokenLookup, "Location to extract CSRF token from request")
+				groupFs.StringVar(&c.Service.CSRF.ContextKey, CSRFContextKey, c.Service.CSRF.ContextKey, "Key used to store CSRF token in context")
+				groupFs.StringVar(&c.Service.CSRF.CookieName, CSRFCookieName, c.Service.CSRF.CookieName, "Name of the CSRF cookie")
+				groupFs.StringVar(&c.Service.CSRF.CookieDomain, CSRFCookieDomain, c.Service.CSRF.CookieDomain, "Domain attribute for CSRF cookie")
+				groupFs.StringVar(&c.Service.CSRF.CookiePath, CSRFCookiePath, c.Service.CSRF.CookiePath, "Path attribute for CSRF cookie")
+				groupFs.IntVar(&c.Service.CSRF.CookieMaxAge, CSRFCookieMaxAge, c.Service.CSRF.CookieMaxAge, "Maximum age in seconds for CSRF cookie ")
+				groupFs.BoolVar(&c.Service.CSRF.CookieSecure, CSRFCookieSecure, c.Service.CSRF.CookieSecure, "Set Secure flag on CSRF cookie")
+				groupFs.BoolVar(&c.Service.CSRF.CookieHTTPOnly, CSRFCookieHTTPOnly, c.Service.CSRF.CookieHTTPOnly, "Set HttpOnly flag on CSRF cookie")
+				groupFs.Var(&c.Service.CSRF.CookieSameSite, CSRFCookieSameSite, fmt.Sprintf("SameSite attribute for CSRF cookie\nValues: %s", strings.Join(service.CSRFSameSiteModes, ", ")))
 				return groupFs
 			}(),
 		},
@@ -453,10 +235,10 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Healthcheck endpoints configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Healthcheck", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Healthcheck.Enabled, HealthcheckEnabled, c.Healthcheck.Enabled, "Enable health check endpoints")
-				groupFs.StringVar(&c.Healthcheck.LivenessEndpoint, HealthcheckLivenessEndpoint, c.Healthcheck.LivenessEndpoint, "Path for the liveness health check endpoint that indicates if the application is running")
-				groupFs.StringVar(&c.Healthcheck.ReadinessEndpoint, HealthcheckReadinessEndpoint, c.Healthcheck.ReadinessEndpoint, "Path for the readiness health check endpoint that indicates if the application is ready to receive traffic")
-				groupFs.StringVar(&c.Healthcheck.StartupEndpoint, HealthcheckStartupEndpoint, c.Healthcheck.StartupEndpoint, "Path for the startup health check endpoint that indicates if the application has completed its initialization")
+				groupFs.BoolVar(&c.Service.Healthcheck.Enabled, HealthcheckEnabled, c.Service.Healthcheck.Enabled, "Enable health check endpoints")
+				groupFs.StringVar(&c.Service.Healthcheck.LivenessEndpoint, HealthcheckLivenessEndpoint, c.Service.Healthcheck.LivenessEndpoint, "Path for the liveness health check endpoint that indicates if the application is running")
+				groupFs.StringVar(&c.Service.Healthcheck.ReadinessEndpoint, HealthcheckReadinessEndpoint, c.Service.Healthcheck.ReadinessEndpoint, "Path for the readiness health check endpoint that indicates if the application is ready to receive traffic")
+				groupFs.StringVar(&c.Service.Healthcheck.StartupEndpoint, HealthcheckStartupEndpoint, c.Service.Healthcheck.StartupEndpoint, "Path for the startup health check endpoint that indicates if the application has completed its initialization")
 				return groupFs
 			}(),
 		},
@@ -468,8 +250,8 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Prometheus configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Prometheus", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Prometheus.Enabled, PrometheusEnabled, c.Prometheus.Enabled, "Enables Prometheus metrics collection and exposure for application monitoring")
-				groupFs.StringVar(&c.Prometheus.Path, PrometheusPath, c.Prometheus.Path, "Sets the HTTP path where Prometheus metrics will be exposed")
+				groupFs.BoolVar(&c.Service.Prometheus.Enabled, PrometheusEnabled, c.Service.Prometheus.Enabled, "Enables Prometheus metrics collection and exposure for application monitoring")
+				groupFs.StringVar(&c.Service.Prometheus.Path, PrometheusPath, c.Service.Prometheus.Path, "Sets the HTTP path where Prometheus metrics will be exposed")
 				return groupFs
 			}(),
 		},
@@ -477,11 +259,11 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Rate limiter middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Rate Limiter", pflag.ExitOnError)
-				groupFs.BoolVar(&c.RateLimiter.Enabled, RateLimiterEnabled, c.RateLimiter.Enabled, "Enable rate limiting middleware")
-				groupFs.Var(&c.RateLimiter.Store, RateLimiterStoreKind, fmt.Sprintf("Storage backend for rate limiting\nValues: %s", strings.Join(limiterStores, ", ")))
-				groupFs.Float64Var(&c.RateLimiter.Memory.Rate, RateLimiterMemoryRate, c.RateLimiter.Memory.Rate, "Maximum request rate per time window")
-				groupFs.IntVar(&c.RateLimiter.Memory.Burst, RateLimiterMemoryBurst, c.RateLimiter.Memory.Burst, "Maximum number of requests allowed to exceed the rate")
-				groupFs.DurationVar(&c.RateLimiter.Memory.ExpiresIn, RateLimiterMemoryExpiresIn, c.RateLimiter.Memory.ExpiresIn, "Time window for rate limit expiration")
+				groupFs.BoolVar(&c.Service.RateLimiter.Enabled, RateLimiterEnabled, c.Service.RateLimiter.Enabled, "Enable rate limiting middleware")
+				groupFs.Var(&c.Service.RateLimiter.Store, RateLimiterStoreKind, fmt.Sprintf("Storage backend for rate limiting\nValues: %s", strings.Join(service.LimiterStores, ", ")))
+				groupFs.Float64Var(&c.Service.RateLimiter.Memory.Rate, RateLimiterMemoryRate, c.Service.RateLimiter.Memory.Rate, "Maximum request rate per time window")
+				groupFs.IntVar(&c.Service.RateLimiter.Memory.Burst, RateLimiterMemoryBurst, c.Service.RateLimiter.Memory.Burst, "Maximum number of requests allowed to exceed the rate")
+				groupFs.DurationVar(&c.Service.RateLimiter.Memory.ExpiresIn, RateLimiterMemoryExpiresIn, c.Service.RateLimiter.Memory.ExpiresIn, "Time window for rate limit expiration")
 				return groupFs
 			}(),
 		},
@@ -489,11 +271,20 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Recover middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Recover", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Recover.Enabled, RecoverEnabled, c.Recover.Enabled, "Enable automatic recovery from panics")
-				groupFs.IntVar(&c.Recover.StackSize, RecoverStackSize, c.Recover.StackSize, "recover")
-				groupFs.BoolVar(&c.Recover.DisableStackAll, RecoverDisableStackAll, c.Recover.DisableStackAll, "Disables capturing the complete stack trace during panic recovery")
-				groupFs.BoolVar(&c.Recover.DisablePrintStack, RecoverDisablePrintStack, c.Recover.DisablePrintStack, "Prevents printing the stack trace when recovering from panics")
-				groupFs.BoolVar(&c.Recover.DisableErrorHandler, RecoverDisableErrorHandler, c.Recover.DisableErrorHandler, "Disables the default error handler for panics, allowing the application to crash instead of recovering")
+				groupFs.BoolVar(&c.Service.Recover.Enabled, RecoverEnabled, c.Service.Recover.Enabled, "Enable automatic recovery from panics")
+				groupFs.IntVar(&c.Service.Recover.StackSize, RecoverStackSize, c.Service.Recover.StackSize, "Controls the size of the stack trace buffer in kilobytes that will be captured when a panic occurs")
+				groupFs.BoolVar(&c.Service.Recover.DisableStackAll, RecoverDisableStackAll, c.Service.Recover.DisableStackAll, "Disables capturing the complete stack trace during panic recovery")
+				groupFs.BoolVar(&c.Service.Recover.DisablePrintStack, RecoverDisablePrintStack, c.Service.Recover.DisablePrintStack, "Prevents printing the stack trace when recovering from panics")
+				groupFs.BoolVar(&c.Service.Recover.DisableErrorHandler, RecoverDisableErrorHandler, c.Service.Recover.DisableErrorHandler, "Disables the default error handler for panics, allowing the application to crash instead of recovering")
+				return groupFs
+			}(),
+		},
+		{
+			Desc: "Redirect configuration options",
+			Flags: func() *pflag.FlagSet {
+				groupFs := pflag.NewFlagSet("Redirect", pflag.ExitOnError)
+				groupFs.BoolVar(&c.Service.Redirect.HTTPS, RedirectHTTPS, c.Service.Redirect.HTTPS, "Controls whether HTTP requests are redirected to HTTPS")
+				groupFs.IntVar(&c.Service.Redirect.Code, RedirectCode, c.Service.Redirect.Code, "Specifies the HTTP status code used for redirects")
 				return groupFs
 			}(),
 		},
@@ -501,8 +292,8 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Request ID middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Request ID", pflag.ExitOnError)
-				groupFs.BoolVar(&c.RequestID.Enabled, RequestIDEnabled, c.RequestID.Enabled, "Enable request ID middleware")
-				groupFs.StringVar(&c.RequestID.TargetHeader, RequestIDTargetHeader, c.RequestID.TargetHeader, "Custom header for request ID")
+				groupFs.BoolVar(&c.Service.RequestID.Enabled, RequestIDEnabled, c.Service.RequestID.Enabled, "Enable request ID middleware")
+				groupFs.StringVar(&c.Service.RequestID.TargetHeader, RequestIDTargetHeader, c.Service.RequestID.TargetHeader, "Custom header for request ID")
 				return groupFs
 			}(),
 		},
@@ -510,20 +301,20 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Security headers configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Secure", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Secure.Enabled, SecureEnabled, c.Secure.Enabled, "Enables all security headers for enhanced protection against common web vulnerabilities")
-				groupFs.StringVar(&c.Secure.ContentSecurityPolicy, SecureContentSecurityPolicy, c.Secure.ContentSecurityPolicy, "Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks")
-				groupFs.BoolVar(&c.Secure.ContentSecurityPolicyReportOnly, SecureContentSecurityPolicyReportOnly, c.Secure.ContentSecurityPolicyReportOnly, "Enables report-only mode for CSP, which reports violations but doesn't enforce the policy")
-				groupFs.StringVar(&c.Secure.CrossOriginEmbedderPolicy, SecureCrossOriginEmbedderPolicy, c.Secure.CrossOriginEmbedderPolicy, "Controls which cross-origin resources can be loaded. Default \"require-corp\" only allows resources that explicitly grant permission.")
-				groupFs.StringVar(&c.Secure.CrossOriginOpenerPolicy, SecureCrossOriginOpenerPolicy, c.Secure.CrossOriginOpenerPolicy, "Controls window interactions between origins. Default \"same-origin\" restricts interactions to same-origin documents only.")
-				groupFs.StringVar(&c.Secure.CrossOriginResourcePolicy, SecureCrossOriginResourcePolicy, c.Secure.CrossOriginResourcePolicy, "Specifies which origins can include your resources. Default \"same-origin\" limits access to same-origin requests.")
-				groupFs.StringVar(&c.Secure.PermissionsPolicy, SecurePermissionsPolicy, c.Secure.PermissionsPolicy, "Controls which browser features and APIs can be used. Default policy disables potentially sensitive features like camera, geolocation, and payment processing.")
-				groupFs.StringVar(&c.Secure.ReferrerPolicy, SecureReferrerPolicy, c.Secure.ReferrerPolicy, "Sets the Referrer-Policy header to control how much referrer information is included with requests")
-				groupFs.StringVar(&c.Secure.Server, SecureServer, c.Secure.Server, "Sets a custom value for the HTTP Server header in responses.")
-				groupFs.IntVar(&c.Secure.StrictTransportSecurity.MaxAge, SecureStrictTransportSecurityMaxAge, c.Secure.StrictTransportSecurity.MaxAge, "Sets the max age in seconds for the HTTP Strict-Transport-Security (HSTS) header")
-				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.ExcludeSubdomains, SecureStrictTransportSecurityExcludeSubdomains, c.Secure.StrictTransportSecurity.ExcludeSubdomains, "Excludes subdomains from the HSTS policy, limiting it to the main domain only")
-				groupFs.BoolVar(&c.Secure.StrictTransportSecurity.PreloadEnabled, SecureStrictTransportSecurityPreloadEnabled, c.Secure.StrictTransportSecurity.PreloadEnabled, "Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists")
-				groupFs.StringVar(&c.Secure.XContentTypeOptions, SecureXContentTypeOptions, c.Secure.XContentTypeOptions, "Sets the X-Content-Type-Options header to prevent MIME type sniffing")
-				groupFs.StringVar(&c.Secure.XFrameOptions, SecureXFrameOptions, c.Secure.XFrameOptions, "Sets the X-Frame-Options header to prevent clickjacking attacks")
+				groupFs.BoolVar(&c.Service.Secure.Enabled, SecureEnabled, c.Service.Secure.Enabled, "Enables all security headers for enhanced protection against common web vulnerabilities")
+				groupFs.StringVar(&c.Service.Secure.ContentSecurityPolicy, SecureContentSecurityPolicy, c.Service.Secure.ContentSecurityPolicy, "Sets the Content-Security-Policy header to help prevent cross-site scripting and other code injection attacks")
+				groupFs.BoolVar(&c.Service.Secure.ContentSecurityPolicyReportOnly, SecureContentSecurityPolicyReportOnly, c.Service.Secure.ContentSecurityPolicyReportOnly, "Enables report-only mode for CSP, which reports violations but doesn't enforce the policy")
+				groupFs.StringVar(&c.Service.Secure.CrossOriginEmbedderPolicy, SecureCrossOriginEmbedderPolicy, c.Service.Secure.CrossOriginEmbedderPolicy, "Controls which cross-origin resources can be loaded, default \"require-corp\" only allows resources that explicitly grant permission")
+				groupFs.StringVar(&c.Service.Secure.CrossOriginOpenerPolicy, SecureCrossOriginOpenerPolicy, c.Service.Secure.CrossOriginOpenerPolicy, "Controls window interactions between origins, default \"same-origin\" restricts interactions to same-origin documents only")
+				groupFs.StringVar(&c.Service.Secure.CrossOriginResourcePolicy, SecureCrossOriginResourcePolicy, c.Service.Secure.CrossOriginResourcePolicy, "Specifies which origins can include your resources, default \"same-origin\" limits access to same-origin requests")
+				groupFs.StringVar(&c.Service.Secure.PermissionsPolicy, SecurePermissionsPolicy, c.Service.Secure.PermissionsPolicy, "Controls which browser features and APIs can be used, default policy disables potentially sensitive features like camera, geolocation, and payment processing")
+				groupFs.StringVar(&c.Service.Secure.ReferrerPolicy, SecureReferrerPolicy, c.Service.Secure.ReferrerPolicy, "Sets the Referrer-Policy header to control how much referrer information is included with requests")
+				groupFs.StringVar(&c.Service.Secure.Server, SecureServer, c.Service.Secure.Server, "Sets a custom value for the HTTP Server header in responses")
+				groupFs.IntVar(&c.Service.Secure.StrictTransportSecurity.MaxAge, SecureStrictTransportSecurityMaxAge, c.Service.Secure.StrictTransportSecurity.MaxAge, "Sets the max age in seconds for the HTTP Strict-Transport-Security (HSTS) header")
+				groupFs.BoolVar(&c.Service.Secure.StrictTransportSecurity.ExcludeSubdomains, SecureStrictTransportSecurityExcludeSubdomains, c.Service.Secure.StrictTransportSecurity.ExcludeSubdomains, "Excludes subdomains from the HSTS policy, limiting it to the main domain only")
+				groupFs.BoolVar(&c.Service.Secure.StrictTransportSecurity.PreloadEnabled, SecureStrictTransportSecurityPreloadEnabled, c.Service.Secure.StrictTransportSecurity.PreloadEnabled, "Adds the preload directive to the HSTS header, allowing the site to be included in browser preload lists")
+				groupFs.StringVar(&c.Service.Secure.XContentTypeOptions, SecureXContentTypeOptions, c.Service.Secure.XContentTypeOptions, "Sets the X-Content-Type-Options header to prevent MIME type sniffing")
+				groupFs.StringVar(&c.Service.Secure.XFrameOptions, SecureXFrameOptions, c.Service.Secure.XFrameOptions, "Sets the X-Frame-Options header to prevent clickjacking attacks")
 				return groupFs
 			}(),
 		},
@@ -531,13 +322,13 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Session middleware configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Session", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Session.Enabled, SessionEnabled, c.Session.Enabled, "Enables session management for maintaining user state across requests")
-				groupFs.Var(&c.Session.Store, SessionStoreKind, fmt.Sprintf("Specifies the storage backend for session data\nValues: %s", strings.Join(sessionStores, ", ")))
-				groupFs.StringVar(&c.Session.Cookie.Secret, SessionCookieSecret, c.Session.Cookie.Secret, "Sets the secret key used to sign and encrypt session cookies, this should be a strong, random value in production")
-				groupFs.StringVar(&c.Session.Redis.URI, SessionRedisURI, c.Session.Redis.URI, "Specifies the URI for connecting to a standalone Redis server for session storage\nFormat: redis://[user:password@]host[:port][/database]")
-				groupFs.StringVar(&c.Session.RedisCluster.URI, SessionRedisClusterURI, c.Session.RedisCluster.URI, "Specifies the URI for connecting to a Redis Cluster deployment for session storage, multiple nodes can be separated by commas")
-				groupFs.StringVar(&c.Session.RedisSentinel.MasterName, SessionRedisSentinelMasterName, c.Session.RedisSentinel.MasterName, "Specifies the name of the master node in a Redis Sentinel configuration")
-				groupFs.StringSliceVar(&c.Session.RedisSentinel.SentinelAddrs, SessionRedisSentinelAddrs, c.Session.RedisSentinel.SentinelAddrs, "Lists the addresses of Redis Sentinel nodes for high availability session storage")
+				groupFs.BoolVar(&c.Service.Session.Enabled, SessionEnabled, c.Service.Session.Enabled, "Enables session management for maintaining user state across requests")
+				groupFs.Var(&c.Service.Session.Store, SessionStoreKind, fmt.Sprintf("Specifies the storage backend for session data\nValues: %s", strings.Join(service.SessionStores, ", ")))
+				groupFs.StringVar(&c.Service.Session.Cookie.Secret, SessionCookieSecret, c.Service.Session.Cookie.Secret, "Sets the secret key used to sign and encrypt session cookies, this should be a strong, random value in production")
+				groupFs.StringVar(&c.Service.Session.Redis.URI, SessionRedisURI, c.Service.Session.Redis.URI, "Specifies the URI for connecting to a standalone Redis server for session storage\nFormat: redis://[user:password@]host[:port][/database]")
+				groupFs.StringVar(&c.Service.Session.RedisCluster.URI, SessionRedisClusterURI, c.Service.Session.RedisCluster.URI, "Specifies the URI for connecting to a Redis Cluster deployment for session storage, multiple nodes can be separated by commas")
+				groupFs.StringVar(&c.Service.Session.RedisSentinel.MasterName, SessionRedisSentinelMasterName, c.Service.Session.RedisSentinel.MasterName, "Specifies the name of the master node in a Redis Sentinel configuration")
+				groupFs.StringSliceVar(&c.Service.Session.RedisSentinel.SentinelAddrs, SessionRedisSentinelAddrs, c.Service.Session.RedisSentinel.SentinelAddrs, "Lists the addresses of Redis Sentinel nodes for high availability session storage")
 				return groupFs
 			}(),
 		},
@@ -545,22 +336,38 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 			Desc: "Static file serving configuration options",
 			Flags: func() *pflag.FlagSet {
 				groupFs := pflag.NewFlagSet("Static", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Static.Enabled, StaticEnabled, c.Static.Enabled, "Enables serving of static files from the specified directory")
-				groupFs.StringVar(&c.Static.Root, StaticRoot, c.Static.Root, "Specifies the root directory from which to serve static files")
-				groupFs.StringVar(&c.Static.Index, StaticIndex, c.Static.Index, "Sets the default file to serve when a directory is requested")
-				groupFs.BoolVar(&c.Static.HTML5, StaticHTML5, c.Static.HTML5, "Enables HTML5 mode which redirects all not-found requests to index.html for single-page applications")
-				groupFs.BoolVar(&c.Static.Browse, StaticBrowse, c.Static.Browse, "Enables directory browsing when no index file is present")
-				groupFs.BoolVar(&c.Static.IgnoreBase, StaticIgnoreBase, c.Static.IgnoreBase, "Ignores the base path when serving static files, useful when your app is mounted under a sub-path")
+				groupFs.BoolVar(&c.Service.Static.Enabled, StaticEnabled, c.Service.Static.Enabled, "Enables serving of static files from the specified directory")
+				groupFs.StringVar(&c.Service.Static.Root, StaticRoot, c.Service.Static.Root, "Specifies the root directory from which to serve static files")
+				groupFs.StringVar(&c.Service.Static.Index, StaticIndex, c.Service.Static.Index, "Sets the default file to serve when a directory is requested")
+				groupFs.BoolVar(&c.Service.Static.HTML5, StaticHTML5, c.Service.Static.HTML5, "Enables HTML5 mode which redirects all not-found requests to index.html for single-page applications")
+				groupFs.BoolVar(&c.Service.Static.Browse, StaticBrowse, c.Service.Static.Browse, "Enables directory browsing when no index file is present")
+				groupFs.BoolVar(&c.Service.Static.IgnoreBase, StaticIgnoreBase, c.Service.Static.IgnoreBase, "Ignores the base path when serving static files, useful when your app is mounted under a sub-path")
 				return groupFs
 			}(),
 		},
 		{
 			Desc: "Timeout middleware configuration options",
 			Flags: func() *pflag.FlagSet {
-				groupFs := pflag.NewFlagSet("Timeout", pflag.ExitOnError)
-				groupFs.BoolVar(&c.Timeout.Enabled, TimeoutEnabled, c.Timeout.Enabled, "Enable request timeout middleware")
-				groupFs.StringVar(&c.Timeout.ErrorMessage, TimeoutErrorMessage, c.Timeout.ErrorMessage, "Custom error message when request times out")
-				groupFs.DurationVar(&c.Timeout.Timeout, TimeoutTime, c.Timeout.Timeout, "Maximum duration allowed for request processing")
+				groupFs := pflag.NewFlagSet("Time", pflag.ExitOnError)
+				groupFs.BoolVar(&c.Service.Timeout.Enabled, TimeoutEnabled, c.Service.Timeout.Enabled, "Enable request timeout middleware")
+				groupFs.StringVar(&c.Service.Timeout.ErrorMessage, TimeoutErrorMessage, c.Service.Timeout.ErrorMessage, "Custom error message when request times out")
+				groupFs.DurationVar(&c.Service.Timeout.Time, TimeoutTime, c.Service.Timeout.Time, "Maximum duration allowed for request processing")
+				return groupFs
+			}(),
+		},
+		{
+			Desc: "TLS configuration options",
+			Flags: func() *pflag.FlagSet {
+				groupFs := pflag.NewFlagSet("TLS", pflag.ExitOnError)
+				groupFs.BoolVar(&c.Service.TLS.Enabled, TLSEnabled, c.Service.TLS.Enabled, "Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections")
+				groupFs.StringVar(&c.Service.TLS.BindAddr, TLSBindAddr, c.Service.TLS.BindAddr, "Specifies the host:port address for the HTTPS server to listen on")
+				groupFs.StringVar(&c.Service.TLS.CertFile, TLSCertFile, c.Service.TLS.CertFile, "Path to the TLS certificate file in PEM format containing the server's public key certificate")
+				groupFs.StringVar(&c.Service.TLS.KeyFile, TLSKeyFile, c.Service.TLS.KeyFile, "Path to the TLS private key file in PEM format corresponding to the certificate")
+				groupFs.BoolVar(&c.Service.TLS.ACME.Enabled, TLSACMEEnabled, c.Service.TLS.Enabled, "Enables automatic TLS certificate provisioning using the ACME protocol (Let's Encrypt)")
+				groupFs.StringVar(&c.Service.TLS.ACME.Email, TLSACMEEmail, c.Service.TLS.ACME.Email, "Email address used for ACME account registration and certificate renewal notifications")
+				groupFs.StringVar(&c.Service.TLS.ACME.CachePath, TLSACMECachePath, c.Service.TLS.ACME.CachePath, "Directory path where automatically provisioned TLS certificates will be stored")
+				groupFs.StringSliceVar(&c.Service.TLS.ACME.HostWhitelist, TLSACMEHostWhitelist, c.Service.TLS.ACME.HostWhitelist, "List of hostnames allowed for automatic certificate provisioning")
+				groupFs.StringVar(&c.Service.TLS.ACME.DirectoryURL, TLSACMEDirectoryURL, c.Service.TLS.ACME.DirectoryURL, "URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)")
 				return groupFs
 			}(),
 		},

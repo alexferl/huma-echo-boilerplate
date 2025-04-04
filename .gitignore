@@ -25,3 +25,7 @@ go.work
 
 # binary
 app-bin
+
+# TLS
+cert.pem
+key.pem
