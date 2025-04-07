@@ -64,8 +64,8 @@ Body limit middleware configuration options:
 
 Compress middleware configuration options:
   --compress-enabled bool     Enable compression (default true)
-  --compress-level int        Compression level (default -1)
-  --compress-min-length int   Minimum response size in bytes before compression is applied (default 0)
+  --compress-level int        Compression level (default 6)
+  --compress-min-length int   Minimum response size in bytes before compression is applied (default 1400)
 
 CORS middleware configuration options:
   --cors-enabled bool             Enable CORS middleware (default false)
