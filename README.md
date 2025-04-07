@@ -40,12 +40,13 @@ Logging configuration options:
                         Values: stdout, stderr
 
 HTTP server configuration options:
-  --http-bind-addr string            Specifies the host:port address for the HTTP server to listen on (default localhost:8080)
-  --http-graceful-timeout duration   Sets the maximum time to wait for in-flight requests to complete before shutting down the server (default 30s)
-  --http-log-requests bool           Enables or disables logging of incoming HTTP requests (default true)
-  --http-idle-timeout duration       Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout. (default 1m0s)
-  --http-read-timeout duration       Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 5s)
-  --http-write-timeout duration      Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 10s)
+  --http-bind-addr string               Specifies the host:port address for the HTTP server to listen on (default localhost:8080)
+  --http-graceful-timeout duration      Sets the maximum time to wait for in-flight requests to complete before shutting down the server (default 30s)
+  --http-log-requests bool              Enables or disables logging of incoming HTTP requests (default true)
+  --http-idle-timeout duration          Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout. (default 1m0s)
+  --http-read-timeout duration          Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 10s)
+  --http-read-header-timeout duration   Maximum duration allowed for reading request headers, a zero or negative value means there will be no timeout (default 2s)
+  --http-write-timeout duration         Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 30s)
 
 TLS configuration options:
   --tls-enabled bool                  Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections (default false)
@@ -59,12 +60,12 @@ TLS configuration options:
   --tls-acme-directory-url string     URL of the ACME directory endpoint to use (default is Let's Encrypt production; use https://acme-staging-v02.api.letsencrypt.org/directory for testing)
 
 Body limit middleware configuration options:
-  --body-limit string   Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G"
+  --body-limit string   Sets the maximum allowed size of the request body, use values like "100K", "10M" or "1G" (default 1MB)
 
 Compress middleware configuration options:
   --compress-enabled bool     Enable compression (default true)
-  --compress-level int        Compression level (default 6)
-  --compress-min-length int   Minimum response size in bytes before compression is applied (default 1400)
+  --compress-level int        Compression level (default -1)
+  --compress-min-length int   Minimum response size in bytes before compression is applied (default 0)
 
 CORS middleware configuration options:
   --cors-enabled bool             Enable CORS middleware (default false)
@@ -158,7 +159,7 @@ Static file serving configuration options:
   --static-ignore-base bool   Ignores the base path when serving static files, useful when your app is mounted under a sub-path (default false)
 
 Timeout middleware configuration options:
-  --timeout-enabled bool           Enable request timeout middleware (default false)
-  --timeout-error-message string   Custom error message when request times out
-  --timeout-time duration          Maximum duration allowed for request processing (default 0s)
+  --timeout-enabled bool           Enable request timeout middleware (default true)
+  --timeout-error-message string   Custom error message when request times out (default Request timeout)
+  --timeout-duration duration      Maximum duration allowed for request processing (default 15s)
 ```

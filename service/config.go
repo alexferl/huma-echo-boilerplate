@@ -9,6 +9,10 @@ import (
 	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
 )
 
+const (
+	DefaultSessionCookieSecret = "changeme"
+)
+
 type Config struct {
 	Name        string
 	BodyLimit   BodyLimit
@@ -30,7 +34,8 @@ type Config struct {
 }
 
 type BodyLimit struct {
-	Limit string
+	Enabled bool
+	Limit   string
 }
 
 type Compress struct {
@@ -71,12 +76,13 @@ type Healthcheck struct {
 }
 
 type HTTP struct {
-	BindAddr        string
-	GracefulTimeout time.Duration
-	LogRequests     bool
-	IdleTimeout     time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
+	BindAddr          string
+	GracefulTimeout   time.Duration
+	LogRequests       bool
+	IdleTimeout       time.Duration
+	ReadTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	WriteTimeout      time.Duration
 }
 
 type Prometheus struct {
@@ -150,7 +156,7 @@ type Static struct {
 type Timeout struct {
 	Enabled      bool
 	ErrorMessage string
-	Time         time.Duration
+	Duration     time.Duration
 }
 
 type TLS struct {
@@ -171,12 +177,13 @@ type TLSACME struct {
 
 var DefaultConfig = Config{
 	BodyLimit: BodyLimit{
-		Limit: middleware.DefaultBodyLimitConfig.Limit,
+		Enabled: true,
+		Limit:   "1MB",
 	},
 	Compress: Compress{
 		Enabled:   true,
-		Level:     6,
-		MinLength: 1400,
+		Level:     middleware.DefaultGzipConfig.Level,
+		MinLength: middleware.DefaultGzipConfig.MinLength,
 	},
 	CORS: CORS{
 		Enabled:          false,
@@ -206,12 +213,13 @@ var DefaultConfig = Config{
 		StartupEndpoint:   healthcheck.DefaultConfig.StartupEndpoint,
 	},
 	HTTP: HTTP{
-		BindAddr:        "localhost:8080",
-		GracefulTimeout: 30 * time.Second,
-		LogRequests:     true,
-		IdleTimeout:     time.Minute,
-		ReadTimeout:     5 * time.Second,
-		WriteTimeout:    10 * time.Second,
+		BindAddr:          "localhost:8080",
+		GracefulTimeout:   30 * time.Second,
+		LogRequests:       true,
+		IdleTimeout:       time.Minute,
+		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		WriteTimeout:      30 * time.Second,
 	},
 	Prometheus: Prometheus{
 		Enabled: false,
@@ -263,7 +271,7 @@ var DefaultConfig = Config{
 		Enabled: false,
 		Store:   sessionStoreCookie,
 		Cookie: SessionCookieStore{
-			Secret: "changeme",
+			Secret: DefaultSessionCookieSecret,
 		},
 		Redis: SessionRedisStore{
 			URI: "redis://localhost:6379",
@@ -285,9 +293,9 @@ var DefaultConfig = Config{
 		IgnoreBase: middleware.DefaultStaticConfig.IgnoreBase,
 	},
 	Timeout: Timeout{
-		Enabled:      false,
-		ErrorMessage: middleware.DefaultTimeoutConfig.ErrorMessage,
-		Time:         middleware.DefaultTimeoutConfig.Timeout,
+		Enabled:      true,
+		ErrorMessage: "Request timeout",
+		Duration:     15 * time.Second,
 	},
 	TLS: TLS{
 		Enabled:  false,

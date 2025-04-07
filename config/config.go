@@ -78,12 +78,13 @@ const (
 	HealthcheckReadinessEndpoint = "healthcheck-readiness-endpoint"
 	HealthcheckStartupEndpoint   = "healthcheck-startup-endpoint"
 
-	HTTPBindAddr        = "http-bind-addr"
-	HTTPLogRequests     = "http-log-requests"
-	HTTPGracefulTimeout = "http-graceful-timeout"
-	HTTPIdleTimeout     = "http-idle-timeout"
-	HTTPReadTimeout     = "http-read-timeout"
-	HTTPWriteTimeout    = "http-write-timeout"
+	HTTPBindAddr          = "http-bind-addr"
+	HTTPLogRequests       = "http-log-requests"
+	HTTPGracefulTimeout   = "http-graceful-timeout"
+	HTTPIdleTimeout       = "http-idle-timeout"
+	HTTPReadTimeout       = "http-read-timeout"
+	HTTPReadHeaderTimeout = "http-read-header-timeout"
+	HTTPWriteTimeout      = "http-write-timeout"
 
 	PrometheusEnabled = "prometheus-enabled"
 	PrometheusPath    = "prometheus-path"
@@ -138,7 +139,7 @@ const (
 
 	TimeoutEnabled      = "timeout-enabled"
 	TimeoutErrorMessage = "timeout-error-message"
-	TimeoutTime         = "timeout-time"
+	TimeoutDuration     = "timeout-duration"
 
 	TLSEnabled           = "tls-enabled"
 	TLSBindAddr          = "tls-bind-addr"
@@ -188,6 +189,7 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.BoolVar(&c.Service.HTTP.LogRequests, HTTPLogRequests, c.Service.HTTP.LogRequests, "Enables or disables logging of incoming HTTP requests")
 				groupFs.DurationVar(&c.Service.HTTP.IdleTimeout, HTTPIdleTimeout, c.Service.HTTP.IdleTimeout, "Maximum duration to wait for the next request when keep-alives are enabled, a zero or negative value means there will be no timeout.")
 				groupFs.DurationVar(&c.Service.HTTP.ReadTimeout, HTTPReadTimeout, c.Service.HTTP.ReadTimeout, "Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout")
+				groupFs.DurationVar(&c.Service.HTTP.ReadHeaderTimeout, HTTPReadHeaderTimeout, c.Service.HTTP.ReadHeaderTimeout, "Maximum duration allowed for reading request headers, a zero or negative value means there will be no timeout")
 				groupFs.DurationVar(&c.Service.HTTP.WriteTimeout, HTTPWriteTimeout, c.Service.HTTP.WriteTimeout, "Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout")
 				return groupFs
 			}(),
@@ -371,10 +373,10 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 		{
 			Desc: "Timeout middleware configuration options",
 			Flags: func() *pflag.FlagSet {
-				groupFs := pflag.NewFlagSet("Time", pflag.ExitOnError)
+				groupFs := pflag.NewFlagSet("Timeout", pflag.ExitOnError)
 				groupFs.BoolVar(&c.Service.Timeout.Enabled, TimeoutEnabled, c.Service.Timeout.Enabled, "Enable request timeout middleware")
 				groupFs.StringVar(&c.Service.Timeout.ErrorMessage, TimeoutErrorMessage, c.Service.Timeout.ErrorMessage, "Custom error message when request times out")
-				groupFs.DurationVar(&c.Service.Timeout.Time, TimeoutTime, c.Service.Timeout.Time, "Maximum duration allowed for request processing")
+				groupFs.DurationVar(&c.Service.Timeout.Duration, TimeoutDuration, c.Service.Timeout.Duration, "Maximum duration allowed for request processing")
 				return groupFs
 			}(),
 		},
@@ -532,6 +534,18 @@ func (c *Config) BindFlags() error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed creating logger: %v", err)
+	}
+
+	if c.Service.Session.Enabled {
+		if c.Service.Session.Cookie.Secret == service.DefaultSessionCookieSecret {
+			log.Warn().Msg("session cookie secret using default value!")
+		}
+	}
+
+	if c.Service.Timeout.Enabled {
+		if c.Service.Timeout.Duration >= c.Service.HTTP.WriteTimeout {
+			log.Warn().Msgf("timeout duration (%s) should be shorter than http write timeout (%s)", c.Service.Timeout.Duration, c.Service.HTTP.WriteTimeout)
+		}
 	}
 
 	return nil

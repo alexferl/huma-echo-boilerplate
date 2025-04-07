@@ -21,6 +21,7 @@ import (
 	"github.com/rbcervilla/redisstore/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	"github.com/ziflex/lecho/v3"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
@@ -45,6 +46,7 @@ func New(cfg Config) (*Service, error) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	e.Logger = lecho.From(log.Logger)
 
 	srv := &Service{
 		cfg:    cfg,
@@ -56,7 +58,15 @@ func New(cfg Config) (*Service, error) {
 
 	var middlewares []echo.MiddlewareFunc
 
-	if cfg.BodyLimit.Limit != "" {
+	// needs to be first
+	if cfg.Timeout.Enabled {
+		middlewares = append(middlewares, middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+			ErrorMessage: cfg.Timeout.ErrorMessage,
+			Timeout:      cfg.Timeout.Duration,
+		}))
+	}
+
+	if cfg.BodyLimit.Enabled {
 		middlewares = append(middlewares, middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
 			Limit: cfg.BodyLimit.Limit,
 		}))
@@ -218,15 +228,9 @@ func New(cfg Config) (*Service, error) {
 		}))
 	}
 
-	if cfg.Timeout.Enabled {
-		middlewares = append(middlewares, middleware.TimeoutWithConfig(middleware.TimeoutConfig{
-			ErrorMessage: cfg.Timeout.ErrorMessage,
-			Timeout:      cfg.Timeout.Time,
-		}))
-	}
-
 	if cfg.HTTP.LogRequests {
 		middlewares = append(middlewares, middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+			HandleError:      true,
 			LogRequestID:     true,
 			LogRemoteIP:      true,
 			LogHost:          true,
@@ -404,11 +408,12 @@ func (s *Service) Shutdown(ctx context.Context) error {
 
 func (s *Service) createServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
-		Addr:         addr,
-		Handler:      handler,
-		IdleTimeout:  s.cfg.HTTP.IdleTimeout,
-		ReadTimeout:  s.cfg.HTTP.ReadTimeout,
-		WriteTimeout: s.cfg.HTTP.WriteTimeout,
+		Addr:              addr,
+		Handler:           handler,
+		IdleTimeout:       s.cfg.HTTP.IdleTimeout,
+		ReadTimeout:       s.cfg.HTTP.ReadTimeout,
+		ReadHeaderTimeout: s.cfg.HTTP.ReadHeaderTimeout,
+		WriteTimeout:      s.cfg.HTTP.WriteTimeout,
 	}
 }
 
