@@ -170,8 +170,8 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs := pflag.NewFlagSet("Server", pflag.ExitOnError)
 				groupFs.StringVar(&c.AppName, AppName, c.AppName, "Application name")
 				groupFs.StringVar(&c.EnvName, EnvName, c.EnvName, "Environment name")
-				groupFs.StringVar(&c.ConfigPrefix, ConfigPrefix, c.ConfigPrefix, "Sets the prefix for configuration files to be loaded, e.g., \"config\" would match \"config.{env_name}.toml\"")
 				groupFs.StringVar(&c.ConfigType, ConfigType, c.ConfigType, "Defines the format of configuration files to be loaded\nValues: json, toml, or yaml")
+				groupFs.StringVar(&c.ConfigPrefix, ConfigPrefix, c.ConfigPrefix, "Sets the prefix for configuration files to be loaded, e.g., \"config\" would match \"config.{env_name}.{config_type}\"")
 				groupFs.StringSliceVar(&c.ConfigPaths, ConfigPaths, c.ConfigPaths, "Specifies directories where configuration files will be searched for, in order of preference")
 				return groupFs
 			}(),

@@ -26,9 +26,9 @@ Usage: app [flags]
 Server configuration options:
   --app-name string        Application name (default app)
   --env-name string        Environment name (default local)
-  --config-prefix string   Sets the prefix for configuration files to be loaded, e.g., "config" would match "config.{env_name}.toml" (default config)
   --config-type string     Defines the format of configuration files to be loaded (default toml)
                            Values: json, toml, or yaml
+  --config-prefix string   Sets the prefix for configuration files to be loaded, e.g., "config" would match "config.{env_name}.{config_type}" (default config)
   --config-paths strings   Specifies directories where configuration files will be searched for, in order of preference (default [./configs,/configs])
 
 Logging configuration options:
