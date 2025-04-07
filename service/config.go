@@ -182,8 +182,8 @@ var DefaultConfig = Config{
 	},
 	Compress: Compress{
 		Enabled:   true,
-		Level:     middleware.DefaultGzipConfig.Level,
-		MinLength: middleware.DefaultGzipConfig.MinLength,
+		Level:     6,
+		MinLength: 1400,
 	},
 	CORS: CORS{
 		Enabled:          false,

@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/labstack/echo/v4"
 )
 
 type HelloResponse struct {
@@ -10,8 +13,17 @@ type HelloResponse struct {
 	}
 }
 
-func (s *Service) Hello(context.Context, *struct{}) (*HelloResponse, error) {
+func (s *Service) Hello(ctx context.Context, _ *struct{}) (*HelloResponse, error) {
+	echoCtx, ok := ctx.Value(echoCtxKey{}).(echo.Context)
+	msg := "World"
+	if ok {
+		header := echoCtx.Request().Header.Get("X-Hello")
+		if header != "" {
+			msg = header
+		}
+	}
+
 	resp := &HelloResponse{}
-	resp.Body.Message = "Hello, World!"
+	resp.Body.Message = fmt.Sprintf("Hello, %s!", msg)
 	return resp, nil
 }
