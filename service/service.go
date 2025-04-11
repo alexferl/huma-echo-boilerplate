@@ -26,8 +26,8 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/time/rate"
 
-	humaechoboilerplate "github.com/alexferl/huma-echo-boilerplate"
-	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
+	app "github.com/alexferl/huma-echo-boilerplate"
+	"github.com/alexferl/huma-echo-boilerplate/service/healthcheck"
 )
 
 type echoCtxKey struct{}
@@ -269,7 +269,7 @@ func New(cfg Config) (*Service, error) {
 
 	e.Use(middlewares...)
 
-	humaCfg := huma.DefaultConfig(cfg.Name, humaechoboilerplate.Version)
+	humaCfg := huma.DefaultConfig(cfg.Name, app.Version)
 	humaCfg.CreateHooks = nil
 
 	api := humaecho.New(e, humaCfg)

@@ -6,7 +6,7 @@ import (
 	secure "github.com/alexferl/echo-secure"
 	"github.com/labstack/echo/v4/middleware"
 
-	"github.com/alexferl/huma-echo-boilerplate/healthcheck"
+	"github.com/alexferl/huma-echo-boilerplate/service/healthcheck"
 )
 
 const (
