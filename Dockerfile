@@ -19,4 +19,4 @@ COPY --from=builder /build/configs /configs
 
 ENTRYPOINT ["/app"]
 
-EXPOSE 1323
+EXPOSE 8080

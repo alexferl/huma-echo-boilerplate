@@ -47,6 +47,7 @@ HTTP server configuration options:
   --http-read-timeout duration          Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout (default 10s)
   --http-read-header-timeout duration   Maximum duration allowed for reading request headers, a zero or negative value means there will be no timeout (default 2s)
   --http-write-timeout duration         Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout (default 30s)
+  --http-max-header-bytes int           Specifies the maximum number of bytes the server will read parsing the request header's keys and values, including the request line (default 2097152)
 
 TLS configuration options:
   --tls-enabled bool                  Enables TLS encryption for secure communications, when enabled, the server requires HTTPS connections (default false)

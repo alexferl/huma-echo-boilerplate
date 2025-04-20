@@ -85,6 +85,7 @@ const (
 	HTTPReadTimeout       = "http-read-timeout"
 	HTTPReadHeaderTimeout = "http-read-header-timeout"
 	HTTPWriteTimeout      = "http-write-timeout"
+	HTTPMaxHeaderBytes    = "http-max-header-bytes"
 
 	PrometheusEnabled = "prometheus-enabled"
 	PrometheusPath    = "prometheus-path"
@@ -191,6 +192,7 @@ func (c *Config) addFlags(fs *pflag.FlagSet) {
 				groupFs.DurationVar(&c.Service.HTTP.ReadTimeout, HTTPReadTimeout, c.Service.HTTP.ReadTimeout, "Maximum duration for reading the entire request, including the body, a zero or negative value means there will be no timeout")
 				groupFs.DurationVar(&c.Service.HTTP.ReadHeaderTimeout, HTTPReadHeaderTimeout, c.Service.HTTP.ReadHeaderTimeout, "Maximum duration allowed for reading request headers, a zero or negative value means there will be no timeout")
 				groupFs.DurationVar(&c.Service.HTTP.WriteTimeout, HTTPWriteTimeout, c.Service.HTTP.WriteTimeout, "Maximum duration before timing out writes of the response, a zero or negative value means there will be no timeout")
+				groupFs.IntVar(&c.Service.HTTP.MaxHeaderBytes, HTTPMaxHeaderBytes, c.Service.HTTP.MaxHeaderBytes, "Specifies the maximum number of bytes the server will read parsing the request header's keys and values, including the request line")
 				return groupFs
 			}(),
 		},

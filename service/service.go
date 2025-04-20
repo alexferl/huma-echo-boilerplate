@@ -14,6 +14,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humaecho"
 	"github.com/gorilla/sessions"
+	"github.com/klauspost/compress/gzhttp"
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -97,13 +98,6 @@ func New(cfg Config) (*Service, error) {
 			CookieSecure:   cfg.CSRF.CookieSecure,
 			CookieHTTPOnly: cfg.CSRF.CookieHTTPOnly,
 			CookieSameSite: http.SameSite(cfg.CSRF.CookieSameSite),
-		}))
-	}
-
-	if cfg.Compress.Enabled {
-		middlewares = append(middlewares, middleware.GzipWithConfig(middleware.GzipConfig{
-			Level:     cfg.Compress.Level,
-			MinLength: cfg.Compress.MinLength,
 		}))
 	}
 
@@ -292,7 +286,21 @@ func New(cfg Config) (*Service, error) {
 }
 
 func (s *Service) Start() <-chan error {
-	s.httpServer = s.createServer(s.cfg.HTTP.BindAddr, s.e)
+	handler := s.e.Server.Handler
+
+	if s.cfg.Compress.Enabled {
+		gzipHandler, err := gzhttp.NewWrapper(
+			gzhttp.MinSize(s.cfg.Compress.MinLength),
+			gzhttp.CompressionLevel(s.cfg.Compress.Level),
+		)
+		if err != nil {
+			s.errCh <- fmt.Errorf("gzip handler error: %w", err)
+		} else {
+			handler = gzipHandler(s.e)
+		}
+	}
+
+	s.httpServer = s.createServer(s.cfg.HTTP.BindAddr, handler)
 
 	if !s.cfg.TLS.Enabled {
 		go func() {
@@ -321,7 +329,7 @@ func (s *Service) Start() <-chan error {
 			CipherSuites:     getOptimalDefaultCipherSuites(),
 		}
 
-		s.httpsServer = s.createServer(s.cfg.TLS.BindAddr, s.e)
+		s.httpsServer = s.createServer(s.cfg.TLS.BindAddr, handler)
 		s.httpsServer.TLSConfig = tlsConfig
 
 		// HTTP server that listens on port 80 for challenges
@@ -424,6 +432,7 @@ func (s *Service) createServer(addr string, handler http.Handler) *http.Server {
 		ReadTimeout:       s.cfg.HTTP.ReadTimeout,
 		ReadHeaderTimeout: s.cfg.HTTP.ReadHeaderTimeout,
 		WriteTimeout:      s.cfg.HTTP.WriteTimeout,
+		MaxHeaderBytes:    s.cfg.HTTP.MaxHeaderBytes,
 	}
 }
 

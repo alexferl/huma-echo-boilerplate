@@ -79,6 +79,7 @@ type HTTP struct {
 	BindAddr          string
 	GracefulTimeout   time.Duration
 	LogRequests       bool
+	MaxHeaderBytes    int
 	IdleTimeout       time.Duration
 	ReadTimeout       time.Duration
 	ReadHeaderTimeout time.Duration
@@ -216,6 +217,7 @@ var DefaultConfig = Config{
 		BindAddr:          "localhost:8080",
 		GracefulTimeout:   30 * time.Second,
 		LogRequests:       true,
+		MaxHeaderBytes:    2 * (1024 * 1024),
 		IdleTimeout:       time.Minute,
 		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
